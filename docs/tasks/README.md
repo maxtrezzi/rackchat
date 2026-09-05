@@ -1,0 +1,47 @@
+# Work items
+
+What to do next, and what is done. The reasoning behind *why* the work is shaped this way
+lives in [`../adr/`](../adr/README.md) — tasks and ADRs answer different questions and
+should not restate each other.
+
+| Question | Answer lives in |
+|---|---|
+| What do I do next? Is it done? | here |
+| Why is it built this way? What did we reject? | [`../adr/`](../adr/README.md) |
+
+A task that settles a design question closes by writing an ADR and linking to it. A task
+that merely gets work done closes by being marked `Done`.
+
+## Files
+
+- [`milestones.md`](milestones.md) — M0, M1, … What ships, in what order.
+- [`open-decisions.md`](open-decisions.md) — items blocked on the owner, not on work.
+
+## Conventions
+
+**Identifiers never change.** Once a milestone or task is cited elsewhere (an ADR, another
+task), renumbering it silently breaks that reference — items are retired in place rather
+than renumbered, and new work takes the next free number.
+
+**Status values**
+
+| Status | Meaning |
+|---|---|
+| `Not started` | Ready to pick up |
+| `In progress` | Someone is on it |
+| `Blocked` | Waiting on another task; names which one |
+| `Needs decision` | Waiting on the owner, not on work |
+| `Done` | Finished, with its outcome recorded in the entry |
+
+**Closing a task** means recording what was *found*, not just ticking a box. Findings that
+contradict a current ADR trigger an amendment to that ADR (see `../adr/README.md`).
+
+**Every task gets its own branch** ([ADR-0003](../adr/0003-one-feature-branch-per-task.md)).
+Branch before starting, never commit to `main`, and name the branch after the item.
+
+## Status board
+
+| Item | What | Status |
+|---|---|---|
+| [M0](milestones.md#m0--repository-skeleton) | Repository skeleton: `AGENTS.md`, ADRs, task tracking | **Done** — this commit |
+| [M1](milestones.md#m1--first-runnable-slice) | First runnable slice | Not started |
