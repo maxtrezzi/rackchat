@@ -1,0 +1,24 @@
+# Build output
+target/
+build/
+.gradle/
+out/
+
+# Frontend
+node_modules/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# Secrets and local environment
+.env
+*.local.conf
+
+# Local-only design material — never committed (see AGENTS.md)
+brainstorm/
