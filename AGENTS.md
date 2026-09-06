@@ -4,11 +4,12 @@ Guidance for a coding agent working in this repository.
 
 ## Project state
 
-**M1 and M2 are done: the application runs, and its configuration can be edited from the
-page.** A Javalin backend loads a modelrack4j registry from a configuration file it watches,
-serves `/api/connections`, a streamed `/api/chat`, and `GET`/`PUT /api/config`; the Hyperapp
-page has a chat tab and a configuration tab. Read `docs/tasks/milestones.md` before starting
-anything; it records what each milestone actually found, not just that it finished.
+**M1 to M3 are done: the application runs, it remembers a conversation, and its configuration
+can be edited from the page.** A Javalin backend loads a modelrack4j registry from a
+configuration file it watches, serves `/api/connections`, a streamed `/api/chat` that carries
+the conversation's history, and `GET`/`PUT /api/config`; the Hyperapp page has a chat tab and
+a configuration tab. Read `docs/tasks/milestones.md` before starting anything; it records what
+each milestone actually found, not just that it finished.
 
 **One thing has never run: a live model call.** The machine this was built on has no
 provider key and its egress proxy refuses the provider hosts, so every path was exercised
@@ -33,8 +34,8 @@ The intended shape, agreed before this repository existed:
 - A frontend chat page with a selector for which named connection to talk to, and a way to
   edit the configuration.
 
-Both exist. What the original sketch did not cover, and still does not, is chat history:
-each request sends one message with no transcript.
+Both exist, and M3 added the part the original sketch never mentioned: the conversation is
+kept, so a follow-up question builds on the answer before it.
 
 Disagreements between this file and `docs/adr/` are resolved in favour of the ADRs, which
 carry the actual reasoning.
@@ -90,6 +91,20 @@ methods this project cannot call.
 each call, so two calls can straddle a reload and disagree. The endpoints take one snapshot
 and answer from it.
 
+**Memory comes from the bundle, never from RackChat (ADR-0012).** `Conversations` decides
+*which* memory a request belongs to — one per (conversation, connection) — and nothing else.
+A connection with no `memory` block gets none, and the page says so: do not add a default
+here, because that would be the application overruling a configuration that said nothing.
+Memory is written only when an answer comes back, so a failed call leaves no dangling
+question.
+
+**The one way to see whether the model was told anything is `EchoProviderFactory`** in test
+scope: a modelrack4j provider whose model answers with the messages it received. Its answers
+render as a bare `ai` with no text **on purpose** — an earlier answer is itself such a
+description, and including its text nests every turn inside the next, which quietly makes any
+substring assertion about eviction come out true. Run the app with it by putting
+`target/test-classes` on the classpath and `provider = echo` in the configuration.
+
 ## Decision workflow — follow this every session
 
 Three artifacts, different audiences (this mirrors modelrack4j's own workflow, adopted here
@@ -135,7 +150,7 @@ a vendored Hyperapp (ADR-0008).
 
 ```bash
 cd backend && mvn compile                      # compile
-cd backend && mvn test                         # 11 tests, no keys and no network needed
+cd backend && mvn test                         # 19 tests, no keys and no network needed
 cd backend && mvn test -Dtest=RackChatApiTest  # one class
 ```
 

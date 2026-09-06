@@ -13,9 +13,11 @@ const fetchConnections = (dispatch) => {
     .catch((error) => dispatch(Failed, "Could not load the connections: " + error.message))
 }
 
-const streamAnswer = (dispatch, { connection, message }) => {
+const streamAnswer = (dispatch, { connection, message, conversation }) => {
   const url =
-    "/api/chat?connection=" + encodeURIComponent(connection) + "&message=" + encodeURIComponent(message)
+    "/api/chat?connection=" + encodeURIComponent(connection) +
+    "&message=" + encodeURIComponent(message) +
+    "&conversation=" + encodeURIComponent(conversation)
   const source = new EventSource(url)
 
   source.addEventListener("token", (event) => dispatch(AppendToken, JSON.parse(event.data).text))
@@ -94,10 +96,18 @@ const Send = (state) => {
         { who: state.selected, text: "" },
       ]),
     },
-    [streamAnswer, { connection: state.selected, message }],
+    [streamAnswer, { connection: state.selected, message, conversation: state.conversation }],
     [scrollToEnd],
   ]
 }
+
+// The server keeps one history per (conversation, connection), so a new id is a clean start.
+const NewConversation = (state) => ({
+  ...state,
+  conversation: newConversationId(),
+  messages: [],
+  error: "",
+})
 
 const SendOnEnter = (state, event) => (event.key === "Enter" ? Send(state) : state)
 
@@ -168,8 +178,12 @@ const messageBubble = (message) =>
 const describe = (state) => {
   const current = state.connections.find((connection) => connection.name === state.selected)
   if (!current) return ""
-  const streaming = current.streaming ? "streamed" : "one answer"
-  return current.description ? current.description + " (" + streaming + ")" : streaming
+  const traits = [current.streaming ? "streamed" : "one answer"]
+  // A connection with no `memory` block answers every question on its own. Saying so here is
+  // the difference between a documented limit and something that looks broken.
+  traits.push(current.memory ? "remembers this conversation" : "no memory: each question stands alone")
+  const summary = traits.join(", ")
+  return current.description ? current.description + " (" + summary + ")" : summary
 }
 
 const chatView = (state) => [
@@ -246,6 +260,13 @@ const view = (state) =>
               state.connections.map(connectionOption)
             )
           : null,
+        state.tab === "chat"
+          ? h(
+              "button",
+              { onclick: NewConversation, class: "ghost", disabled: state.waiting },
+              text("New conversation")
+            )
+          : null,
         h(
           "button",
           { onclick: state.tab === "chat" ? ShowConfig : ShowChat, class: "ghost" },
@@ -257,10 +278,15 @@ const view = (state) =>
     ...(state.tab === "chat" ? chatView(state) : configView(state)),
   ])
 
+/** crypto.randomUUID needs a secure context; over plain http on a LAN address it is absent. */
+const newConversationId = () =>
+  crypto.randomUUID ? crypto.randomUUID() : "c-" + Date.now() + "-" + Math.random().toString(36).slice(2)
+
 app({
   init: [
     {
       tab: "chat",
+      conversation: newConversationId(),
       connections: [],
       selected: "",
       draft: "",
