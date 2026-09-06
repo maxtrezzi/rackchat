@@ -40,6 +40,31 @@ const scrollToEnd = () => {
   })
 }
 
+const fetchConfig = (dispatch) => {
+  fetch("/api/config")
+    .then((response) => {
+      if (!response.ok) throw new Error("HTTP " + response.status)
+      return response.json()
+    })
+    .then((document) => dispatch(ConfigLoaded, document))
+    .catch((error) => dispatch(ConfigFailed, "Could not read the configuration: " + error.message))
+}
+
+const saveConfig = (dispatch, { expected, text }) => {
+  fetch("/api/config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expected, text }),
+  })
+    .then((response) => response.json().then((body) => ({ status: response.status, body })))
+    .then(({ status, body }) => {
+      if (status === 200) dispatch(ConfigSaved, body)
+      // 409 means the file moved under the editor; the edits stay, the message explains.
+      else dispatch(ConfigFailed, body.message || "The configuration was refused.")
+    })
+    .catch((error) => dispatch(ConfigFailed, "Could not save: " + error.message))
+}
+
 // --- actions ---------------------------------------------------------------
 
 const ConnectionsLoaded = (state, connections) => ({
@@ -88,6 +113,47 @@ const AppendToken = (state, token) => [
 
 const AnswerDone = (state, error) => ({ ...state, waiting: false, error: error || "" })
 
+// --- the configuration editor ----------------------------------------------
+
+const ShowChat = (state) => ({ ...state, tab: "chat", configNote: "" })
+
+const ShowConfig = (state) => [{ ...state, tab: "config", configNote: "" }, [fetchConfig]]
+
+const ConfigLoaded = (state, document) => ({
+  ...state,
+  configId: document.id,
+  configText: document.text,
+  // What the save is checked against: the text as it was when we read it.
+  configExpected: document.text,
+  configSaving: false,
+  configNote: "",
+})
+
+const ConfigSaved = (state, document) => [
+  {
+    ...state,
+    configText: document.text,
+    configExpected: document.text,
+    configSaving: false,
+    configNote: "Saved. The running connections were updated.",
+  },
+  [fetchConnections],
+]
+
+const ConfigFailed = (state, message) => ({ ...state, configSaving: false, configNote: message })
+
+const EditConfig = (state, event) => ({ ...state, configText: event.target.value })
+
+const SaveConfig = (state) =>
+  state.configSaving
+    ? state
+    : [
+        { ...state, configSaving: true, configNote: "" },
+        [saveConfig, { expected: state.configExpected, text: state.configText }],
+      ]
+
+const ReloadConfig = (state) => [{ ...state, configSaving: false }, [fetchConfig]]
+
 // --- view ------------------------------------------------------------------
 
 const connectionOption = (connection) =>
@@ -106,46 +172,107 @@ const describe = (state) => {
   return current.description ? current.description + " (" + streaming + ")" : streaming
 }
 
+const chatView = (state) => [
+  h("p", { class: "hint" }, text(describe(state))),
+  state.error ? h("p", { class: "error" }, text(state.error)) : null,
+
+  h("div", { id: "transcript", class: "transcript" }, state.messages.map(messageBubble)),
+
+  h("div", { class: "composer" }, [
+    h("input", {
+      type: "text",
+      placeholder: "Ask something, then press Enter",
+      value: state.draft,
+      oninput: EditDraft,
+      onkeydown: SendOnEnter,
+      disabled: state.waiting || state.connections.length === 0,
+    }),
+    h(
+      "button",
+      { onclick: Send, disabled: state.waiting || state.connections.length === 0 },
+      text(state.waiting ? "…" : "Send")
+    ),
+  ]),
+]
+
+const configView = (state) => {
+  const unsaved = state.configText !== state.configExpected
+  return [
+    h(
+      "p",
+      { class: "hint" },
+      text(
+        state.configId
+          ? "Editing " + state.configId + ". Saving validates the whole configuration first: " +
+            "if it would not load, nothing is written."
+          : "Loading…"
+      )
+    ),
+    state.configNote ? h("p", { class: "error" }, text(state.configNote)) : null,
+
+    h("textarea", {
+      class: "editor",
+      spellcheck: "false",
+      value: state.configText,
+      oninput: EditConfig,
+      disabled: state.configSaving,
+    }),
+
+    h("div", { class: "composer" }, [
+      h("span", { class: "hint grow" }, text(unsaved ? "Unsaved changes" : "No changes")),
+      h("button", { onclick: ReloadConfig, disabled: state.configSaving }, text("Reload")),
+      h(
+        "button",
+        { onclick: SaveConfig, disabled: state.configSaving || !unsaved },
+        text(state.configSaving ? "…" : "Save")
+      ),
+    ]),
+  ]
+}
+
 const view = (state) =>
   h("main", {}, [
     h("header", {}, [
       h("h1", {}, text("RackChat")),
-      h(
-        "select",
-        {
-          onchange: SelectConnection,
-          disabled: state.connections.length === 0,
-          value: state.selected,
-        },
-        state.connections.map(connectionOption)
-      ),
+      h("div", { class: "tools" }, [
+        state.tab === "chat"
+          ? h(
+              "select",
+              {
+                onchange: SelectConnection,
+                disabled: state.connections.length === 0,
+                value: state.selected,
+              },
+              state.connections.map(connectionOption)
+            )
+          : null,
+        h(
+          "button",
+          { onclick: state.tab === "chat" ? ShowConfig : ShowChat, class: "ghost" },
+          text(state.tab === "chat" ? "Configuration" : "Back to chat")
+        ),
+      ]),
     ]),
 
-    h("p", { class: "hint" }, text(describe(state))),
-    state.error ? h("p", { class: "error" }, text(state.error)) : null,
-
-    h("div", { id: "transcript", class: "transcript" }, state.messages.map(messageBubble)),
-
-    h("div", { class: "composer" }, [
-      h("input", {
-        type: "text",
-        placeholder: "Ask something, then press Enter",
-        value: state.draft,
-        oninput: EditDraft,
-        onkeydown: SendOnEnter,
-        disabled: state.waiting || state.connections.length === 0,
-      }),
-      h(
-        "button",
-        { onclick: Send, disabled: state.waiting || state.connections.length === 0 },
-        text(state.waiting ? "…" : "Send")
-      ),
-    ]),
+    ...(state.tab === "chat" ? chatView(state) : configView(state)),
   ])
 
 app({
   init: [
-    { connections: [], selected: "", draft: "", messages: [], waiting: false, error: "" },
+    {
+      tab: "chat",
+      connections: [],
+      selected: "",
+      draft: "",
+      messages: [],
+      waiting: false,
+      error: "",
+      configId: "",
+      configText: "",
+      configExpected: "",
+      configSaving: false,
+      configNote: "",
+    },
     [fetchConnections],
   ],
   view,

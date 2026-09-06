@@ -1,6 +1,8 @@
 package io.github.maxtrezzi.rackchat;
 
+import io.github.maxtrezzi.modelrack4j.ConfigSource;
 import io.github.maxtrezzi.modelrack4j.LlmRegistry;
+import io.github.maxtrezzi.modelrack4j.WritableConfigSource;
 import io.javalin.Javalin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,18 +47,44 @@ class RackChatApiTest {
             }
             """;
 
+    /** The same configuration with one block added — written out, not patched with replace(). */
+    private static final String CONFIG_WITH_ONE_MORE = """
+            llm {
+              fast {
+                description = "streamed"
+                provider    = openai
+                api-key     = "sk-not-a-real-key"
+                model-name  = "gpt-5.1"
+                streaming   = true
+              }
+              plain {
+                provider   = openai
+                api-key    = "sk-not-a-real-key"
+                model-name = "gpt-5.1"
+              }
+              added {
+                provider   = openai
+                api-key    = "sk-not-a-real-key"
+                model-name = "gpt-5.1"
+              }
+            }
+            """;
+
     @TempDir
     Path directory;
 
+    private Path config;
+    private WritableConfigSource source;
     private LlmRegistry registry;
     private Javalin app;
     private final HttpClient client = HttpClient.newHttpClient();
 
     @BeforeEach
     void startApp() throws IOException {
-        Path config = Files.writeString(directory.resolve("test.conf"), CONFIG);
-        registry = LlmRegistry.builder().configFiles(List.of(config)).watch(false).build();
-        app = RackChatApi.create(registry).start(0);
+        config = Files.writeString(directory.resolve("test.conf"), CONFIG);
+        source = ConfigSource.ofWritableFile(config);
+        registry = LlmRegistry.builder().sources(List.of(source)).watch(false).build();
+        app = RackChatApi.create(registry, source).start(0);
     }
 
     @AfterEach
@@ -147,20 +175,82 @@ class RackChatApiTest {
         assertTrue(hyperapp.body().contains("export var app"), "vendored hyperapp.js is not the ESM build");
     }
 
+    // --- the configuration editor ------------------------------------------------------
+
+    @Test
+    void theConfigurationIsServedAsTextWithItsLayerId() throws Exception {
+        HttpResponse<String> response = get("/api/config");
+
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\\\"sk-not-a-real-key\\\""), response.body());
+        assertTrue(response.body().contains(config.toString()), response.body());
+    }
+
+    @Test
+    void savingValidTextRewritesTheFileAndUpdatesTheRegistry() throws Exception {
+        HttpResponse<String> response = put("/api/config", edit(CONFIG, CONFIG_WITH_ONE_MORE));
+
+        assertEquals(200, response.statusCode(), response.body());
+        assertTrue(Files.readString(config).contains("added {"), "the file was not rewritten");
+        assertTrue(registry.names().contains("added"), "the registry did not pick up the new block");
+        assertTrue(get("/api/connections").body().contains("\"name\":\"added\""));
+    }
+
+    /**
+     * The ordering is the whole reason modelrack4j has {@code store}: validate and publish
+     * first, write second. Text that would not load must never reach the file, or the next
+     * start fails on something the editor accepted.
+     */
+    @Test
+    void savingBrokenTextChangesNeitherTheFileNorTheRegistry() throws Exception {
+        String before = Files.readString(config);
+
+        HttpResponse<String> response = put("/api/config",
+                edit(CONFIG, "llm { broken { provider = nosuchprovider, api-key = \"x\", model-name = \"m\" } }"));
+
+        assertEquals(400, response.statusCode(), response.body());
+        assertEquals(before, Files.readString(config), "the file was changed by a rejected save");
+        assertTrue(registry.names().contains("fast"), "the live registry lost its connections");
+    }
+
+    @Test
+    void savingAgainstStaleTextIsRefusedAsAConflict() throws Exception {
+        HttpResponse<String> response = put("/api/config",
+                edit("this is not what the file holds", CONFIG));
+
+        assertEquals(409, response.statusCode(), response.body());
+        assertTrue(response.body().contains("changed since you loaded it"), response.body());
+    }
+
+    private static String edit(String expected, String text) {
+        return "{\"expected\":" + quote(expected) + ",\"text\":" + quote(text) + "}";
+    }
+
+    /** Minimal JSON string escaping — enough for the configuration text these tests send. */
+    private static String quote(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+    }
+
+    private HttpResponse<String> put(String path, String body) throws IOException, InterruptedException {
+        return send(request(path)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(body))
+                .build());
+    }
+
     private HttpResponse<String> get(String path) throws IOException, InterruptedException {
-        return send(request(path).build());
+        return send(request(path).GET().build());
     }
 
     /** An SSE request, with the header a browser's EventSource sends and Javalin requires. */
     private HttpResponse<String> sse(String path) throws IOException, InterruptedException {
-        return send(request(path).header("Accept", "text/event-stream").build());
+        return send(request(path).header("Accept", "text/event-stream").GET().build());
     }
 
     private HttpRequest.Builder request(String path) {
         return HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:" + app.port() + path))
-                .timeout(Duration.ofSeconds(10))
-                .GET();
+                .timeout(Duration.ofSeconds(10));
     }
 
     private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
