@@ -1,10 +1,12 @@
 package io.github.maxtrezzi.rackchat;
 
 import io.github.maxtrezzi.modelrack4j.ConfigSource;
+import io.github.maxtrezzi.modelrack4j.ConfigValidationException;
 import io.github.maxtrezzi.modelrack4j.FileChangeNotifier;
 import io.github.maxtrezzi.modelrack4j.LlmRegistry;
 import io.github.maxtrezzi.modelrack4j.WritableConfigSource;
 import io.javalin.Javalin;
+import io.javalin.util.JavalinBindException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +26,24 @@ public final class Main {
     private Main() {
     }
 
+    /**
+     * Starts the application, turning the two failures a first run actually hits — an unset
+     * key variable and a port already taken — into messages rather than stack traces.
+     *
+     * <p>Only those two are caught. Anything else keeps its stack trace, because an
+     * unexpected exception is a defect and the trace is the useful part of it.
+     */
     public static void main(String[] args) {
+        try {
+            start(args);
+        } catch (ConfigValidationException e) {
+            die("the configuration was rejected.", e);
+        } catch (JavalinBindException e) {
+            die(e.getMessage() + " Set RACKCHAT_PORT to use another one.", null);
+        }
+    }
+
+    private static void start(String[] args) {
         Path config = configPath(args);
         if (!Files.isReadable(config)) {
             System.err.println("Cannot read the configuration file: " + config.toAbsolutePath());
@@ -59,6 +78,31 @@ public final class Main {
         app.start(host(), port());
         log.info("RackChat is reading {} and knows {} connection(s): {}",
                 config.toAbsolutePath(), registry.names().size(), registry.names());
+    }
+
+    private static void die(String headline, Throwable cause) {
+        System.err.println();
+        System.err.println("RackChat cannot start: " + headline);
+        if (cause != null) {
+            System.err.println();
+            System.err.println("  " + explain(cause));
+        }
+        System.err.println();
+        System.exit(1);
+    }
+
+    /**
+     * The readable part of a failure: its message, plus its cause's when that adds something.
+     * modelrack4j already folds the underlying reason into its own message, hence the check —
+     * without it the same sentence is printed twice.
+     */
+    static String explain(Throwable failure) {
+        String message = failure.getMessage() == null ? failure.toString() : failure.getMessage();
+        Throwable cause = failure.getCause();
+        if (cause == null || cause.getMessage() == null || message.contains(cause.getMessage())) {
+            return message;
+        }
+        return message + System.lineSeparator() + "  caused by: " + cause.getMessage();
     }
 
     private static Path configPath(String[] args) {

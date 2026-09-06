@@ -154,3 +154,31 @@ reading the DOM in the same tick as the click; re-reading after the render showe
 correct.
 
 **Still not verified:** any of this against a real model. That gap is the same one M1 left.
+
+## M3.1 — Startup failures read like messages, not crashes
+
+**Status: Done.**
+
+Writing `docs/running-locally.md` meant running a first start from a clean clone, which
+showed the most likely first-run mistake — forgetting to export the key variable — arriving as
+a Java stack trace. modelrack4j's message was already the right one
+(*"Set the environment variable, or override the value in a higher-precedence layer"*); it was
+just buried.
+
+`main` now catches exactly two exceptions and prints them as messages, with exit code `1`
+(measured — the first attempt read `$?` from a `grep` at the end of a pipeline and reported a
+misleading `0`):
+
+- `ConfigValidationException` — anything the configuration got wrong.
+- `JavalinBindException` — the port is taken, with `RACKCHAT_PORT` named as the way out.
+
+**Everything else keeps its stack trace on purpose.** An unexpected exception is a defect, and
+the trace is the useful part of it; catching broadly here would turn a bug report into a
+shrug. Javalin still logs its own `Failed to start Javalin` line before the port message —
+its logging, not ours, and the message lands last.
+
+`Main.explain` folds in the cause's message only when it adds something, because modelrack4j
+already embeds the underlying reason in its own text and the naive version printed the same
+sentence twice. Tested against the real exception rather than a stand-in: the test builds a
+registry over a config with an unset variable, and asserts the rendered text names the
+variable and contains no stack frames. 22 tests, green.

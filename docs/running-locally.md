@@ -175,13 +175,25 @@ question.
 
 ## When something goes wrong
 
-**"Could not resolve substitution to a value: ${OPENAI_API_KEY}"** — the variable is not set
-in the shell that started RackChat. This arrives as a Java stack trace; the useful line is the
-first one, which names the variable. Set it, or change that connection to a provider whose key
-you do have.
+Startup failures print a message and stop with exit code `1`. A *stack trace* means something
+unexpected, which is worth reporting rather than working around.
 
-**"Port already in use. Make sure no other process is using port 7070"** — something else has
-the port, quite possibly an earlier RackChat you did not stop. Use another one:
+**"RackChat cannot start: the configuration was rejected."** — followed by the reason. The
+usual one is an unset variable:
+
+```
+  A mandatory substitution is unresolved after merging all layers. Set the environment
+  variable, or override the value in a higher-precedence layer: /…/rackchat.conf: 27:
+  Could not resolve substitution to a value: ${OPENAI_API_KEY}
+```
+
+Set that variable in the shell you start RackChat from, or change the connection to a provider
+whose key you do have. The same message shape covers any other rejected configuration — an
+unknown `provider`, a `memory` block a provider cannot support — with a different reason.
+
+**"RackChat cannot start: Port already in use…"** — something else has the port, quite
+possibly an earlier RackChat you did not stop. Javalin logs its own `Failed to start Javalin`
+line just before; the last line is the one to read. Use another port:
 
 ```bash
 RACKCHAT_PORT=7099 java -cp "target/classes:$(cat target/cp.txt)" \
