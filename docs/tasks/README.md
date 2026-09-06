@@ -43,5 +43,6 @@ Branch before starting, never commit to `main`, and name the branch after the it
 
 | Item | What | Status |
 |---|---|---|
-| [M0](milestones.md#m0--repository-skeleton) | Repository skeleton: `AGENTS.md`, ADRs, task tracking | **Done** — this commit |
+| [M0](milestones.md#m0--repository-skeleton) | Repository skeleton: `AGENTS.md`, ADRs, task tracking | **Done** |
+| [M0.1](milestones.md#m01--backend-build-tooling) | Backend build tooling: Maven, Java 21, minimal Javalin skeleton | **Done** — ADR-0007 |
 | [M1](milestones.md#m1--first-runnable-slice) | First runnable slice | Not started |
