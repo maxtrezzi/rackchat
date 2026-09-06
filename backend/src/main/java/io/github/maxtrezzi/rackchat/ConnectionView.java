@@ -14,7 +14,8 @@ public record ConnectionView(
         String description,
         String provider,
         String model,
-        boolean streaming) {
+        boolean streaming,
+        boolean memory) {
 
     public static ConnectionView of(LlmBundle bundle) {
         LlmConfig config = bundle.config();
@@ -23,6 +24,9 @@ public record ConnectionView(
                 config.description().orElse(""),
                 config.provider(),
                 config.modelName(),
-                bundle.streamingChatModel().isPresent());
+                bundle.streamingChatModel().isPresent(),
+                // No `memory` block means this connection answers each question on its own.
+                // The page says so, because a chat that forgets looks like a bug otherwise.
+                bundle.chatMemoryProvider().isPresent());
     }
 }

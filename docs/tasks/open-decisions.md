@@ -12,11 +12,14 @@ Candidates raised but not yet decided, for when they become so:
 
 - TypeScript vs. plain JavaScript for the Hyperapp frontend. M1 shipped plain JavaScript
   with no build step; this only reopens if the page grows enough to want types.
-- **Whether a chat keeps history across turns.** Each request sends one message with no
-  transcript, so `memory` in the configuration currently changes nothing about what the model
-  sees. This is the most likely thing to be mistaken for a bug — it is a gap, not a defect,
-  and closing it is a decision about where the transcript lives (browser, server, or a
-  LangChain4j `AiServices` with the bundle's `ChatMemoryProvider`).
+- **Whether history should survive a restart.** M3 settled where memory lives (the server,
+  one per conversation and connection — ADR-0012) but it is held in memory only, so
+  restarting loses every conversation while the page still shows the transcript. Persisting
+  it is a new decision, not an oversight.
+- **Whether switching connection mid-conversation should carry the history across.** ADR-0012
+  says it does not, for a reason (each connection carries its own eviction policy, and a
+  shared transcript would re-run remote token estimation every turn). If it turns out to feel
+  wrong in use, that is a decision to revisit, with the cost known.
 - **Authentication.** There is none, and the editor serves the configuration's raw text. The
   server binds `127.0.0.1` for that reason. Anything that makes RackChat reachable from
   another machine needs this settled first.

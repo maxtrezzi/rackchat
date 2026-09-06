@@ -47,3 +47,4 @@ Branch before starting, never commit to `main`, and name the branch after the it
 | [M0.1](milestones.md#m01--backend-build-tooling) | Backend build tooling: Maven, Java 21, minimal Javalin skeleton | **Done** — ADR-0007 |
 | [M1](milestones.md#m1--first-runnable-slice) | First runnable slice: connections, streamed chat, the page | **Done** — ADR-0008, ADR-0009; 7 tests green, hot reload seen live |
 | [M2](milestones.md#m2--editing-the-configuration-from-the-page) | Editing the configuration from the page | **Done** — ADR-0010, ADR-0011; 11 tests green, round trip driven in a browser |
+| [M3](milestones.md#m3--a-chat-that-remembers) | A chat that remembers | **Done** — ADR-0012; 19 tests green, memory made testable with a fake provider |

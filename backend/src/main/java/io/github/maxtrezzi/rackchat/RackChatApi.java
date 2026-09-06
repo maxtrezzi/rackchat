@@ -1,5 +1,8 @@
 package io.github.maxtrezzi.rackchat;
 
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -14,6 +17,7 @@ import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,7 +59,7 @@ public final class RackChatApi {
     public record ConfigRejected(String message) {
     }
 
-    public static Javalin create(LlmRegistry registry, WritableConfigSource configSource) {
+    public static Javalin create(LlmRegistry registry, WritableConfigSource configSource, Conversations conversations) {
         return Javalin.create(config -> {
             config.concurrency.useVirtualThreads = true;
             config.staticFiles.add("/public", Location.CLASSPATH);
@@ -69,8 +73,13 @@ public final class RackChatApi {
 
                 String name = client.ctx().queryParam("connection");
                 String message = client.ctx().queryParam("message");
+                String conversation = client.ctx().queryParam("conversation");
                 if (name == null || name.isBlank() || message == null || message.isBlank()) {
                     finish(client, "connection and message are both required");
+                    return;
+                }
+                if (conversation == null || conversation.isBlank()) {
+                    finish(client, "conversation is required");
                     return;
                 }
 
@@ -79,7 +88,7 @@ public final class RackChatApi {
                     finish(client, "no connection named '" + name + "'");
                     return;
                 }
-                answer(client, snapshot.get(name), message);
+                answer(client, snapshot.get(name), message, conversation, conversations);
             });
         });
     }
@@ -128,14 +137,32 @@ public final class RackChatApi {
     }
 
     /**
-     * Streams the answer when the connection has a streaming model, and sends it in one
+     * Answers one question, carrying the conversation's history when the connection has a
+     * {@code memory} block.
+     *
+     * <p>Streams the answer when the connection has a streaming model, and sends it in one
      * frame when it does not — {@code streaming = true} in the configuration is what decides
      * which, since modelrack4j only builds a {@code StreamingChatModel} for those blocks.
+     *
+     * <p><strong>Memory records completed exchanges only.</strong> The question is sent to the
+     * model alongside the history but is written to memory only once an answer comes back, so
+     * a failed call leaves no dangling question for the next turn to carry.
      */
-    private static void answer(io.javalin.http.sse.SseClient client, LlmBundle bundle, String message) {
+    private static void answer(io.javalin.http.sse.SseClient client, LlmBundle bundle,
+                               String message, String conversation, Conversations conversations) {
+        Optional<ChatMemory> memory = conversations.memoryFor(bundle, conversation);
+        UserMessage question = UserMessage.from(message);
+        List<ChatMessage> messages = new ArrayList<>();
+        memory.ifPresent(remembered -> {
+            synchronized (remembered) {
+                messages.addAll(remembered.messages());
+            }
+        });
+        messages.add(question);
+
         Optional<StreamingChatModel> streaming = bundle.streamingChatModel();
         if (streaming.isPresent()) {
-            streaming.get().chat(message, new StreamingChatResponseHandler() {
+            streaming.get().chat(messages, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partial) {
                     client.sendEvent("token", new Token(partial));
@@ -143,6 +170,7 @@ public final class RackChatApi {
 
                 @Override
                 public void onCompleteResponse(ChatResponse response) {
+                    remember(memory, question, response);
                     finish(client, null);
                 }
 
@@ -156,12 +184,23 @@ public final class RackChatApi {
         }
 
         try {
-            client.sendEvent("token", new Token(bundle.chatModel().chat(message)));
+            ChatResponse response = bundle.chatModel().chat(messages);
+            client.sendEvent("token", new Token(response.aiMessage().text()));
+            remember(memory, question, response);
             finish(client, null);
         } catch (RuntimeException e) {
             log.warn("Chat failed for '{}'", bundle.name(), e);
             finish(client, describe(e));
         }
+    }
+
+    private static void remember(Optional<ChatMemory> memory, UserMessage question, ChatResponse response) {
+        memory.ifPresent(remembered -> {
+            synchronized (remembered) {
+                remembered.add(question);
+                remembered.add(response.aiMessage());
+            }
+        });
     }
 
     private static void finish(io.javalin.http.sse.SseClient client, String error) {
