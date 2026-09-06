@@ -5,8 +5,9 @@ A web application to chat with large language models (LLM), built on
 
 The connections you can talk to are not hard-coded: they come from a modelrack4j
 configuration file, one block per connection. The page shows them in a selector, streams the
-answer as it arrives, and picks up edits to that file while the server is running — no
-restart.
+answer as it arrives, and lets you edit that file in a second tab. Edits take effect without
+a restart — whether you make them in the page or in the file itself. A change that would not
+load is refused before anything is written.
 
 ```
 llm {
@@ -34,6 +35,10 @@ OPENAI_API_KEY=... java -cp "target/classes:$(cat target/cp.txt)" \
 
 Then open <http://localhost:7070/>. `mvn test` runs the tests, which need neither a key nor
 a network connection.
+
+The server listens on `127.0.0.1` only. That is deliberate: the configuration tab serves the
+file's raw text, and nothing here asks who you are. See
+[ADR-0010](docs/adr/0010-edit-the-raw-hocon-in-a-textarea.md) before changing `RACKCHAT_HOST`.
 
 ## What is here
 

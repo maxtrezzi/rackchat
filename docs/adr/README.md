@@ -68,3 +68,5 @@ way it is.
 | [0007](0007-maven-and-java-21-for-the-backend.md) | Maven and Java 21 for the backend build | Accepted |
 | [0008](0008-the-frontend-ships-inside-the-backend-jar.md) | The frontend ships inside the backend jar, as classpath static files | Accepted |
 | [0009](0009-stream-the-answer-over-server-sent-events.md) | Stream the answer over Server-Sent Events, framed as JSON | Accepted |
+| [0010](0010-edit-the-raw-hocon-in-a-textarea.md) | Edit the raw HOCON in a textarea, saved with an optimistic check | Accepted |
+| [0011](0011-a-writable-layer-with-a-notifier-supplied-by-hand.md) | A writable layer with the file notifier supplied by hand | Accepted |
