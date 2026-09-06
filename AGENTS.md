@@ -4,12 +4,11 @@ Guidance for a coding agent working in this repository.
 
 ## Project state
 
-**M1 is done: the application runs.** A Javalin backend loads a modelrack4j registry from a
-configuration file it watches, serves `/api/connections` and a streamed `/api/chat`, and
-ships the Hyperapp page that drives them. What is *not* built yet is the configuration
-editor — that is M2, and it is blocked on a decision about where the configuration file
-lives. Read `docs/tasks/milestones.md` before starting anything; it records what each
-milestone actually found, not just that it finished.
+**M1 and M2 are done: the application runs, and its configuration can be edited from the
+page.** A Javalin backend loads a modelrack4j registry from a configuration file it watches,
+serves `/api/connections`, a streamed `/api/chat`, and `GET`/`PUT /api/config`; the Hyperapp
+page has a chat tab and a configuration tab. Read `docs/tasks/milestones.md` before starting
+anything; it records what each milestone actually found, not just that it finished.
 
 **One thing has never run: a live model call.** The machine this was built on has no
 provider key and its egress proxy refuses the provider hosts, so every path was exercised
@@ -30,10 +29,12 @@ The intended shape, agreed before this repository existed:
 
 - A backend that holds a modelrack4j registry, exposes an HTTP API to chat with a selected
   connection, and lets the configuration be edited and saved back through modelrack4j's own
-  `store()` API (validated before it is written — never a raw file write). The first half
-  exists; `store()` is M2.
+  `store()` API (validated before it is written — never a raw file write).
 - A frontend chat page with a selector for which named connection to talk to, and a way to
-  edit the configuration. The selector exists; the editor is M2.
+  edit the configuration.
+
+Both exist. What the original sketch did not cover, and still does not, is chat history:
+each request sends one message with no transcript.
 
 Disagreements between this file and `docs/adr/` are resolved in favour of the ADRs, which
 carry the actual reasoning.
@@ -42,11 +43,29 @@ carry the actual reasoning.
 
 Short pointers, not the argument — read the ADR before changing any of it.
 
-**The credential must never leave the backend.** `LlmConfig` holds the API key *after*
-substitution, so anything that serialises a config or a bundle straight to the browser leaks
-it. `ConnectionView` exists to be the only shape that crosses that line, and a test asserts
-the payload contains neither the key nor a field named after it. Do not "simplify" the
-endpoint to return `bundle.config()`.
+**A *substituted* credential must never leave the backend.** `LlmConfig` holds the API key
+after substitution, so anything that serialises a config or a bundle straight to the browser
+leaks it. `ConnectionView` exists to be the only shape that crosses that line, and a test
+asserts the payload contains neither the key nor a field named after it. Do not "simplify"
+the endpoint to return `bundle.config()`.
+
+**The editor is the deliberate exception, and it is why the server binds loopback
+(ADR-0010).** `/api/config` serves the configuration file's raw text, because you cannot edit
+what you cannot see. With `api-key = ${OPENAI_API_KEY}` that exposes a variable's name; with a
+literal key pasted into the file it exposes the key. Nothing authenticates, so the default
+bind address is `127.0.0.1`. Changing that (`RACKCHAT_HOST`) without solving authentication
+puts the configuration, and anything literal in it, on the network.
+
+**A save validates before it writes, and that ordering is the point (ADR-0010).**
+`storeIfUnchanged` parses and publishes the whole configuration first, and only then replaces
+the file — so text that would not load is refused instead of being saved and breaking the next
+start. A test asserts the file is byte-identical after a rejected save. Never replace this
+with "write the file, then reload".
+
+**The registry is wired by hand for a reason (ADR-0011).** `sources(writable)` plus an
+explicit `FileChangeNotifier`, not `configFiles(...)` with `watch(true)` — because
+modelrack4j `0.1.0` refuses `watch(true)` on a registry built from `sources(...)`, and
+`store()` needs a source from there. The tidier-looking version silently removes the editor.
 
 **SSE frames carry JSON, not bare text (ADR-0009).** SSE is line-based and strips one space
 after `data:`, so a raw token silently loses leading whitespace and every newline. `token`
@@ -116,13 +135,14 @@ a vendored Hyperapp (ADR-0008).
 
 ```bash
 cd backend && mvn compile                      # compile
-cd backend && mvn test                         # 7 tests, no keys and no network needed
+cd backend && mvn test                         # 11 tests, no keys and no network needed
 cd backend && mvn test -Dtest=RackChatApiTest  # one class
 ```
 
 To run it, the backend needs a modelrack4j configuration file. Copy
 `backend/rackchat.example.conf`, put your keys in the environment it names, and pass the
-path as the first argument (or in `RACKCHAT_CONFIG`; `RACKCHAT_PORT` moves it off 7070):
+path as the first argument (or in `RACKCHAT_CONFIG`; `RACKCHAT_PORT` moves it off 7070,
+`RACKCHAT_HOST` off `127.0.0.1` — read ADR-0010 before doing that):
 
 ```bash
 cd backend
@@ -139,10 +159,12 @@ by hand.
 provider: the fake key in `RackChatApiTest` only fails at the first request, which no test
 makes. That is a property of modelrack4j, not luck, and it is what keeps the suite offline.
 
-**Editing the configuration file while the server runs is the point, not a trick.** The
-registry is built with `watch(true)`, so adding a block makes the connection appear in
-`/api/connections` about a second later, with no restart. If a change to the file is
-rejected, the previous configuration stays live and the rejection is logged.
+**Editing the configuration while the server runs is the point, not a trick**, and it works
+from both directions. Editing the file on disk makes the connection appear in
+`/api/connections` about a second later, with no restart; editing it in the page's
+configuration tab does the same through `store()`. If a change is rejected, the previous
+configuration stays live — from the file, the rejection is logged and the old configuration
+keeps serving; from the page, the save is refused with the reason and the file is untouched.
 
 ## Working practices for this repo
 

@@ -123,8 +123,39 @@ select:disabled {
 .composer {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .composer input {
   flex: 1;
+}
+
+.tools {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.grow {
+  flex: 1;
+  margin: 0;
+}
+
+.editor {
+  flex: 1;
+  margin: 1rem 0;
+  min-height: 18rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--theirs);
+  color: inherit;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  resize: vertical;
+  tab-size: 2;
 }
