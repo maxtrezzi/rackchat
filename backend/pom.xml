@@ -17,6 +17,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <javalin.version>7.2.3</javalin.version>
+    <modelrack4j.version>0.1.0</modelrack4j.version>
+    <jackson.version>2.22.1</jackson.version>
     <slf4j.version>2.0.17</slf4j.version>
     <junit.version>5.14.4</junit.version>
 
@@ -24,12 +26,63 @@
     <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.github.maxtrezzi</groupId>
+        <artifactId>modelrack4j-bom</artifactId>
+        <version>${modelrack4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>io.javalin</groupId>
       <artifactId>javalin</artifactId>
       <version>${javalin.version}</version>
     </dependency>
+
+    <!-- modelrack4j: the connection layer (ADR-0004). Versions come from its BOM. -->
+    <dependency>
+      <groupId>io.github.maxtrezzi</groupId>
+      <artifactId>modelrack4j-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maxtrezzi</groupId>
+      <artifactId>modelrack4j-provider-openai</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maxtrezzi</groupId>
+      <artifactId>modelrack4j-provider-anthropic</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maxtrezzi</groupId>
+      <artifactId>modelrack4j-provider-gemini</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maxtrezzi</groupId>
+      <artifactId>modelrack4j-provider-glm</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!--
+      Javalin serialises ctx.json(...) and non-String SSE payloads through Jackson, which it
+      finds reflectively rather than declaring. langchain4j-core happens to bring it, but
+      relying on someone else's transitive dependency for something we use is how a build
+      breaks on an unrelated bump - so declare it, at the version that tree already resolves.
+    -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
