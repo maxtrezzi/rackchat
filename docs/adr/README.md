@@ -66,3 +66,5 @@ way it is.
 | [0005](0005-javalin-as-the-backend-web-framework.md) | Javalin as the backend web framework | Accepted |
 | [0006](0006-hyperapp-as-the-frontend-library.md) | Hyperapp as the frontend library | Accepted |
 | [0007](0007-maven-and-java-21-for-the-backend.md) | Maven and Java 21 for the backend build | Accepted |
+| [0008](0008-the-frontend-ships-inside-the-backend-jar.md) | The frontend ships inside the backend jar, as classpath static files | Accepted |
+| [0009](0009-stream-the-answer-over-server-sent-events.md) | Stream the answer over Server-Sent Events, framed as JSON | Accepted |
