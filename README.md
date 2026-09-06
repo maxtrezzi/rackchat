@@ -9,6 +9,10 @@ answer as it arrives, and lets you edit that file in a second tab. Edits take ef
 a restart — whether you make them in the page or in the file itself. A change that would not
 load is refused before anything is written.
 
+A connection with a `memory` block holds a conversation: follow-up questions carry what was
+said before, within the window the configuration sets. One without it answers each question on
+its own, and the page says so under the selector.
+
 ```
 llm {
   fast {
@@ -17,6 +21,7 @@ llm {
     api-key     = ${OPENAI_API_KEY}
     model-name  = "gpt-5.1"
     streaming   = true
+    memory { type = message-window, max-messages = 20 }
   }
 }
 ```

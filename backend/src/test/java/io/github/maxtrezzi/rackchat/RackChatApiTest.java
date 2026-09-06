@@ -84,7 +84,7 @@ class RackChatApiTest {
         config = Files.writeString(directory.resolve("test.conf"), CONFIG);
         source = ConfigSource.ofWritableFile(config);
         registry = LlmRegistry.builder().sources(List.of(source)).watch(false).build();
-        app = RackChatApi.create(registry, source).start(0);
+        app = RackChatApi.create(registry, source, new Conversations()).start(0);
     }
 
     @AfterEach
@@ -134,7 +134,7 @@ class RackChatApiTest {
 
     @Test
     void anUnknownConnectionEndsTheStreamWithAnError() throws Exception {
-        HttpResponse<String> response = sse("/api/chat?connection=nope&message=hello");
+        HttpResponse<String> response = sse("/api/chat?connection=nope&message=hello&conversation=c1");
         String body = response.body();
 
         assertEquals(200, response.statusCode());

@@ -42,14 +42,20 @@ public final class Main {
                 .notifier(FileChangeNotifier.of(List.of(config), Duration.ofMillis(300)))
                 .build();
 
-        registry.onReload(change -> log.info(
-                "Configuration reloaded: {} added, {} updated, {} removed",
-                change.added(), change.updated(), change.removed()));
+        Conversations conversations = new Conversations();
+
+        // One listener doing both jobs: onReload takes a single consumer, so registering a
+        // second one here would be a coin flip between adding and replacing.
+        registry.onReload(change -> {
+            log.info("Configuration reloaded: {} added, {} updated, {} removed",
+                    change.added(), change.updated(), change.removed());
+            conversations.forget(change.removed());
+        });
         registry.onReloadFailure(failure -> log.warn("Configuration reload rejected: {}", failure));
 
         Runtime.getRuntime().addShutdownHook(new Thread(registry::close));
 
-        Javalin app = RackChatApi.create(registry, source);
+        Javalin app = RackChatApi.create(registry, source, conversations);
         app.start(host(), port());
         log.info("RackChat is reading {} and knows {} connection(s): {}",
                 config.toAbsolutePath(), registry.names().size(), registry.names());
