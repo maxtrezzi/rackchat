@@ -168,7 +168,9 @@ OPENAI_API_KEY=... java -cp "target/classes:$(cat target/cp.txt)" \
 ```
 
 There is no `exec:java` or shaded jar yet — add one when running it stops being a thing done
-by hand.
+by hand. `docs/running-locally.md` is the user-facing version of all this, written for someone
+starting from a fresh checkout; keep the two in step, and prefer sending a reader there rather
+than repeating its content.
 
 **The tests need no API key and no network**, because building a bundle never calls the
 provider: the fake key in `RackChatApiTest` only fails at the first request, which no test

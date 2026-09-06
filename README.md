@@ -33,13 +33,18 @@ it names, then:
 
 ```bash
 cd backend
+mvn verify
 mvn -q dependency:build-classpath -Dmdep.outputFile=target/cp.txt
 OPENAI_API_KEY=... java -cp "target/classes:$(cat target/cp.txt)" \
   io.github.maxtrezzi.rackchat.Main rackchat.conf
 ```
 
-Then open <http://localhost:7070/>. `mvn test` runs the tests, which need neither a key nor
+Then open <http://127.0.0.1:7070/>. `mvn test` runs the tests, which need neither a key nor
 a network connection.
+
+**[`docs/running-locally.md`](docs/running-locally.md) is the full version**: what to check
+first, what each setting does, how to try the whole application with no API key at all, and
+what the common failures look like.
 
 The server listens on `127.0.0.1` only. That is deliberate: the configuration tab serves the
 file's raw text, and nothing here asks who you are. See
@@ -48,6 +53,7 @@ file's raw text, and nothing here asks who you are. See
 ## What is here
 
 - `backend/` — the Javalin API and, inside its resources, the Hyperapp page it serves.
+- [`docs/running-locally.md`](docs/running-locally.md) — how to run it from a fresh checkout.
 - `docs/adr/` — why the project is shaped this way.
 - `docs/tasks/` — what is done, what is next, and what each milestone actually found.
 - [`AGENTS.md`](AGENTS.md) — the guidance to read before changing anything.
