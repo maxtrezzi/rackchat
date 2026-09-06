@@ -67,9 +67,16 @@ the rule applies with no exception.
 
 ## Build and test
 
-Not decided yet. The backend will be Java (ADR-0004 covers *why* modelrack4j, not the
-build tool); which build tool and which Java version are open questions for the first
-milestone, not settled by this file.
+The backend is a Maven project under `backend/`, targeting Java 21 (ADR-0007).
+
+```bash
+cd backend && mvn compile   # compile the backend
+cd backend && mvn test      # run the backend's tests
+```
+
+The frontend build tooling is not decided yet — Hyperapp itself needs no build step, but
+whether the project uses one (bundling, TypeScript) is still open
+(`docs/tasks/open-decisions.md`).
 
 ## Working practices for this repo
 

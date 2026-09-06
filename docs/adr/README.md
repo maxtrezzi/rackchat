@@ -65,3 +65,4 @@ way it is.
 | [0004](0004-build-on-modelrack4j-for-llm-connections.md) | Build on modelrack4j for LLM connection management, not a bespoke integration | Accepted |
 | [0005](0005-javalin-as-the-backend-web-framework.md) | Javalin as the backend web framework | Accepted |
 | [0006](0006-hyperapp-as-the-frontend-library.md) | Hyperapp as the frontend library | Accepted |
+| [0007](0007-maven-and-java-21-for-the-backend.md) | Maven and Java 21 for the backend build | Accepted |
