@@ -20,5 +20,9 @@ dist/
 .env
 *.local.conf
 
+# The real configuration: it names or contains provider credentials. Only the example
+# (rackchat.example.conf) is tracked.
+rackchat.conf
+
 # Local-only design material — never committed (see AGENTS.md)
 brainstorm/
