@@ -192,10 +192,15 @@ arguments it was given. It is not packaging and does not pretend to be — there
 shaded jar and no `exec:java`; it wraps the three lines that never vary so that only the
 configuration path and the environment are typed.
 
-`--echo` is the other half: it compiles the test sources as well and puts `target/test-classes`
-on the classpath, which is the only thing that makes `provider = echo` resolvable. The flag is
-opt-in rather than always-on, so an ordinary run keeps production classes only and the call
-site says which of the two is being started.
+The fake provider is the other half. `provider = echo` resolves only against
+`target/test-classes`, so the script reads the configuration it is about to start on and
+compiles the test sources when that configuration names it. Needing the fake is a property of
+the configuration, not of the run, and the script asks the same file RackChat will.
+
+A flag was the first shape of that — and a trap, because the configuration a bare `./run.sh`
+picks up by default is the echo one, so the two defaults contradicted each other and the
+plain command could only fail. `--echo` survives as a way to force the test sources on for a
+file that has no echo block yet but is about to be given one from the editor.
 
 **Found while building this: RackChat cannot start on an empty configuration file.**
 modelrack4j refuses a registry with no connections — `No 'llm' block found in any
@@ -212,11 +217,16 @@ none — a component RackChat would carry until the library changed. Allowing an
 upstream removes all of it, and that is where the fix is going; the fake `echo` connection
 covers a first start meanwhile, being the only kind that needs no account.
 
-**Verified end to end** with `./run.sh --echo`: the log reports `knows 1 connection(s):
-[echo]`, `/api/connections` answers with the `echo` view and no `api-key` field in it, and two
-questions in one conversation come back as `saw 1: user=first` then
+**Verified end to end** with `./run.sh` over an echo configuration: the log reports `knows 1
+connection(s): [echo]`, `/api/connections` answers with the `echo` view and no `api-key` field
+in it, and two questions in one conversation come back as `saw 1: user=first` then
 `saw 3: user=first|ai|user=second` — the second counting the question, its answer and the new
 question, so memory is live. No key and no network were involved.
+
+The other branch was checked too: over a configuration naming `provider = openai` with a
+literal fake key, the same command starts on `target/classes` alone, with no test classes in
+the running process's `-cp`. Building a bundle never calls the provider, which is why a key
+that cannot work still starts.
 
 ## M3.3 — The conversation follows a connection switch
 

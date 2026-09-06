@@ -178,12 +178,17 @@ llm {
 }
 EOF
 
-./run.sh --echo rackchat.conf
+./run.sh rackchat.conf
 ```
 
-`--echo` compiles the test sources and adds `target/test-classes` to the classpath, which is
-what makes `provider = echo` resolvable. Without the flag the run uses production classes
-only, and that configuration is rejected with *no provider module is on the classpath*.
+No flag is needed: the script reads the configuration it is about to start on, sees
+`provider = echo` in it, and compiles the test sources so that `target/test-classes` — the
+only place the fake provider exists — is on the classpath. Started without them, that
+configuration is rejected with *llm.echo.provider is 'echo', for which no provider module is
+on the classpath*.
+
+Passing `--echo` forces the test sources on regardless, which is what you want when the file
+has no echo block yet and you mean to add one from the editor while it runs.
 
 **A configuration that defines no connection at all cannot start RackChat**, so an empty file
 is not a way to reach the editor and fill it in from there: modelrack4j refuses to build a
