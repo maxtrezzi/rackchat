@@ -1,12 +1,16 @@
 package io.github.maxtrezzi.rackchat;
 
+import io.github.maxtrezzi.modelrack4j.ConfigSource;
+import io.github.maxtrezzi.modelrack4j.FileChangeNotifier;
 import io.github.maxtrezzi.modelrack4j.LlmRegistry;
+import io.github.maxtrezzi.modelrack4j.WritableConfigSource;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 
 public final class Main {
@@ -14,6 +18,7 @@ public final class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     private static final String DEFAULT_CONFIG = "rackchat.conf";
+    private static final String DEFAULT_HOST = "127.0.0.1";
     private static final int DEFAULT_PORT = 7070;
 
     private Main() {
@@ -28,9 +33,13 @@ public final class Main {
             System.exit(1);
         }
 
+        // The layer is writable so the editor can store through it, and the notifier is
+        // supplied by hand because watch(true) refuses a registry built from sources(...) in
+        // modelrack4j 0.1.0 - the two together are what give an editor and hot reload at once.
+        WritableConfigSource source = ConfigSource.ofWritableFile(config);
         LlmRegistry registry = LlmRegistry.builder()
-                .configFiles(List.of(config))
-                .watch(true)
+                .sources(List.of(source))
+                .notifier(FileChangeNotifier.of(List.of(config), Duration.ofMillis(300)))
                 .build();
 
         registry.onReload(change -> log.info(
@@ -40,8 +49,8 @@ public final class Main {
 
         Runtime.getRuntime().addShutdownHook(new Thread(registry::close));
 
-        Javalin app = RackChatApi.create(registry);
-        app.start(port());
+        Javalin app = RackChatApi.create(registry, source);
+        app.start(host(), port());
         log.info("RackChat is reading {} and knows {} connection(s): {}",
                 config.toAbsolutePath(), registry.names().size(), registry.names());
     }
@@ -57,5 +66,15 @@ public final class Main {
     private static int port() {
         String fromEnv = System.getenv("RACKCHAT_PORT");
         return fromEnv == null || fromEnv.isBlank() ? DEFAULT_PORT : Integer.parseInt(fromEnv);
+    }
+
+    /**
+     * Loopback by default: the editor serves the configuration file's raw text, which is
+     * whatever the file holds - including a literal key, if someone pasted one - and nothing
+     * here authenticates. Binding elsewhere is a deliberate act, made with RACKCHAT_HOST.
+     */
+    private static String host() {
+        String fromEnv = System.getenv("RACKCHAT_HOST");
+        return fromEnv == null || fromEnv.isBlank() ? DEFAULT_HOST : fromEnv;
     }
 }

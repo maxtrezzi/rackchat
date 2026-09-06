@@ -73,11 +73,44 @@ this machine, which is `0.2.0-SNAPSHOT` and already has methods `0.1.0` does not
 
 ## M2 — Editing the configuration from the page
 
-**Status: Not started.** Sketch, not a committed scope.
+**Status: Done.**
 
-The other half of the original idea: edit the configuration in the browser and save it
-through modelrack4j's `store()`, which validates the whole configuration before it writes
-and puts the previous snapshot back if the write fails. Two things must be decided first —
-where the configuration file lives when the application is not run from a checkout, and
-whether the editor is a text area over the raw HOCON or a form over its fields. Neither is
-settled; see `open-decisions.md`.
+Both open questions were settled by the owner on 2026-09-06: a textarea over the raw HOCON,
+and the file stays where it is (an argument or `RACKCHAT_CONFIG`). What shipped:
+`GET /api/config`, `PUT /api/config` through `storeIfUnchanged`, and a second tab in the page
+with the text, a Save and a Reload (ADR-0010). 11 tests, green.
+
+**What the probes established before any code was written** — all three ran against the
+published `0.1.0` jar, not against the newer working copy of modelrack4j on this machine:
+
+- **`sources(writable)` + `watch(true)` is refused in `0.1.0`**, with
+  *"watch(true) watches configuration files, and this registry has none — its layers were
+  given through sources(...)"*. Since `store()` needs a writable source and a writable source
+  can only arrive through `sources(...)`, the editor and hot reload looked mutually exclusive.
+- **The error message's own suggestion works.** `FileChangeNotifier.of(List, Duration)` is
+  public in `0.1.0`; with it, the registry builds, an outside edit fires `onReload` and
+  changes `names()`, and `store()` still works. That is ADR-0011.
+- **A store fires no reload listener.** `store()` returned
+  `ReloadChange[added=[viaStore]]` to its caller and the `onReload` listener was called
+  **0** times, because the publish happens before the write and the watcher then sees an
+  empty diff. So the page refetches the connections itself.
+- **A rejected store touches nothing.** Invalid text left the file byte-identical and the
+  registry still serving its old connections.
+- **`storeIfUnchanged` with a stale expectation throws `StaleLayerException`**, and
+  `current()` hands back the text the file actually holds.
+
+**What was verified in the browser, end to end:** the editor loads the file's text; a broken
+save is refused with modelrack4j's own message (*"llm.broken.provider is 'nosuchprovider',
+for which no provider module is on the classpath"*) and Reload restores the file's text
+exactly; a good save reports success, the file on disk gains the block, and the new
+connection is selectable in the chat tab without a restart.
+
+**What could not be tested here:** a genuine write failure. The probe made the directory
+read-only and the store succeeded anyway — this container runs as **root**, and root ignores
+those permission bits. So the claim in ADR-0010 that a write failure surfaces as a `400` comes
+from modelrack4j's documentation of its own `0.1.0`, not from a measurement.
+
+**A safety consequence, recorded because it is easy to miss:** the editor serves the file's
+raw text, so a literal key pasted into the file reaches the browser, and nothing
+authenticates. The server now binds `127.0.0.1` by default; `RACKCHAT_HOST` changes it and
+should not be changed casually.
