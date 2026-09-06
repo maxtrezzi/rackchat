@@ -91,6 +91,12 @@ methods this project cannot call.
 each call, so two calls can straddle a reload and disagree. The endpoints take one snapshot
 and answer from it.
 
+**`main` catches exactly two exceptions, and that number is the point.**
+`ConfigValidationException` and `JavalinBindException` become messages with exit code `1`,
+because they are the two mistakes a first run actually makes. Everything else keeps its stack
+trace: an unexpected exception is a defect, and widening this catch would turn a bug report
+into a shrug.
+
 **Memory comes from the bundle, never from RackChat (ADR-0012).** `Conversations` decides
 *which* memory a request belongs to — one per (conversation, connection) — and nothing else.
 A connection with no `memory` block gets none, and the page says so: do not add a default
@@ -150,7 +156,7 @@ a vendored Hyperapp (ADR-0008).
 
 ```bash
 cd backend && mvn compile                      # compile
-cd backend && mvn test                         # 19 tests, no keys and no network needed
+cd backend && mvn test                         # 22 tests, no keys and no network needed
 cd backend && mvn test -Dtest=RackChatApiTest  # one class
 ```
 
