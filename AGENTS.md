@@ -216,14 +216,16 @@ path as the first argument (or in `RACKCHAT_CONFIG`; `RACKCHAT_PORT` moves it of
 
 ```bash
 cd backend
-mvn -q dependency:build-classpath -Dmdep.outputFile=target/cp.txt
-OPENAI_API_KEY=... java -cp "target/classes:$(cat target/cp.txt)" \
-  io.github.maxtrezzi.rackchat.Main rackchat.conf
-# then open http://localhost:7070/
+OPENAI_API_KEY=... ./run.sh rackchat.conf   # then open http://localhost:7070/
+./run.sh --echo rackchat.conf               # with the fake provider, no key needed
 ```
 
-There is no `exec:java` or shaded jar yet — add one when running it stops being a thing done
-by hand. `docs/running-locally.md` is the user-facing version of all this, written for someone
+`run.sh` compiles and starts; its arguments are RackChat's own. `--echo` compiles the test
+sources too and puts `target/test-classes` on the classpath, which is the only thing that
+makes `provider = echo` resolvable.
+
+There is still no `exec:java` or shaded jar — the script wraps
+`dependency:build-classpath` plus a `java -cp` line rather than replacing the need for one. `docs/running-locally.md` is the user-facing version of all this, written for someone
 starting from a fresh checkout; keep the two in step, and prefer sending a reader there rather
 than repeating its content.
 

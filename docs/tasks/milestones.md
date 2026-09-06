@@ -183,6 +183,41 @@ sentence twice. Tested against the real exception rather than a stand-in: the te
 registry over a config with an unset variable, and asserts the rendered text names the
 variable and contains no stack frames. 22 tests, green.
 
+## M3.2 — A launch script
+
+**Status: Done.**
+
+`backend/run.sh` compiles, regenerates the dependency classpath and starts `Main` with the
+arguments it was given. It is not packaging and does not pretend to be — there is still no
+shaded jar and no `exec:java`; it wraps the three lines that never vary so that only the
+configuration path and the environment are typed.
+
+`--echo` is the other half: it compiles the test sources as well and puts `target/test-classes`
+on the classpath, which is the only thing that makes `provider = echo` resolvable. The flag is
+opt-in rather than always-on, so an ordinary run keeps production classes only and the call
+site says which of the two is being started.
+
+**Found while building this: RackChat cannot start on an empty configuration file.**
+modelrack4j refuses a registry with no connections — `No 'llm' block found in any
+configuration layer`, and `The 'llm' block is empty: no configurations to build` for an
+`llm {}` with nothing under it. Both come from `SnapshotLoader`, which carries the same check
+in the `0.2.0-SNAPSHOT` working copy.
+
+That closes a route which looks obvious from the outside: start with nothing, then fill the
+configuration in from the editor. It cannot work, because the page holding the editor is only
+reachable once a configuration has loaded. Expressing "running, nothing configured yet" on
+top of `0.1.0` would mean holding an optional registry, a bootstrap watcher to build one when
+the file gains its first connection, and a second path through save for text that defines
+none — a component RackChat would carry until the library changed. Allowing an empty rack
+upstream removes all of it, and that is where the fix is going; the fake `echo` connection
+covers a first start meanwhile, being the only kind that needs no account.
+
+**Verified end to end** with `./run.sh --echo`: the log reports `knows 1 connection(s):
+[echo]`, `/api/connections` answers with the `echo` view and no `api-key` field in it, and two
+questions in one conversation come back as `saw 1: user=first` then
+`saw 3: user=first|ai|user=second` — the second counting the question, its answer and the new
+question, so memory is live. No key and no network were involved.
+
 ## M3.3 — The conversation follows a connection switch
 
 **Status: Done.**
