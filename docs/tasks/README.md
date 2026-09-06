@@ -45,4 +45,5 @@ Branch before starting, never commit to `main`, and name the branch after the it
 |---|---|---|
 | [M0](milestones.md#m0--repository-skeleton) | Repository skeleton: `AGENTS.md`, ADRs, task tracking | **Done** |
 | [M0.1](milestones.md#m01--backend-build-tooling) | Backend build tooling: Maven, Java 21, minimal Javalin skeleton | **Done** — ADR-0007 |
-| [M1](milestones.md#m1--first-runnable-slice) | First runnable slice | Not started |
+| [M1](milestones.md#m1--first-runnable-slice) | First runnable slice: connections, streamed chat, the page | **Done** — ADR-0008, ADR-0009; 7 tests green, hot reload seen live |
+| [M2](milestones.md#m2--editing-the-configuration-from-the-page) | Editing the configuration from the page | Not started |
