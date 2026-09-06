@@ -114,3 +114,43 @@ from modelrack4j's documentation of its own `0.1.0`, not from a measurement.
 raw text, so a literal key pasted into the file reaches the browser, and nothing
 authenticates. The server now binds `127.0.0.1` by default; `RACKCHAT_HOST` changes it and
 should not be changed casually.
+
+## M3 — A chat that remembers
+
+**Status: Done.**
+
+Until here each request sent one message and nothing else, so the `memory` block changed
+nothing about what the model saw. Now the server keeps one `ChatMemory` per (conversation,
+connection), taken from the bundle's own provider (ADR-0012); the page generates a
+conversation id, offers "New conversation", and says under the selector whether the chosen
+connection remembers. 19 tests, green.
+
+**The important part is that this became testable at all.** "The model remembered" cannot be
+observed from outside without a live provider, and there is no key here. So the test tree now
+carries `EchoProviderFactory`, a modelrack4j `ProviderFactory` registered through
+`META-INF/services` in **test scope**, whose model answers with a description of the messages
+it was given: `saw 3: user=one|ai|user=two`. That makes the whole feature checkable offline,
+end to end through the real HTTP endpoint. The same trick runs the app by hand — put
+`target/test-classes` on the classpath and `provider = echo` in the configuration.
+
+**Two test failures that were the tests' fault, both worth remembering:**
+
+- Adding the `conversation` parameter made an M1 test fail, because it asserted the error for
+  an unknown connection and now got "conversation is required" first. Deliberate behaviour
+  change, stale assertion.
+- The window test failed twice while the code was correct. The fake model originally answered
+  by quoting the messages it saw **including the text of earlier answers**, so each turn
+  nested the previous one and any `contains("user=one")` was true regardless of what had been
+  evicted. The fix was in the fake, not the assertion: an answer now renders as a bare `ai`
+  with no text, so the rendering cannot nest. A fake that echoes its input recursively cannot
+  be asserted on with substrings.
+
+**Verified in the browser** (with the echo provider): the second question arrives as
+`saw 3: user=first question|ai|user=second question`; "New conversation" clears the transcript
+and the next question arrives as `saw 1:`; a connection with no `memory` block stays at
+`saw 1:` forever and says so in the page. Two apparent UI bugs during that check —a hint
+showing the previous connection, a transcript that did not clear — were both the check script
+reading the DOM in the same tick as the click; re-reading after the render showed the page
+correct.
+
+**Still not verified:** any of this against a real model. That gap is the same one M1 left.
