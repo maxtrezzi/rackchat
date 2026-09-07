@@ -2,9 +2,7 @@ package io.github.maxtrezzi.rackchat;
 
 import io.github.maxtrezzi.modelrack4j.ConfigSource;
 import io.github.maxtrezzi.modelrack4j.ConfigValidationException;
-import io.github.maxtrezzi.modelrack4j.FileChangeNotifier;
 import io.github.maxtrezzi.modelrack4j.LlmRegistry;
-import io.github.maxtrezzi.modelrack4j.WritableConfigSource;
 import io.javalin.Javalin;
 import io.javalin.util.JavalinBindException;
 import org.slf4j.Logger;
@@ -12,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.List;
 
 public final class Main {
@@ -52,20 +49,19 @@ public final class Main {
             System.exit(1);
         }
 
-        // The layer is writable so the editor can store through it, and the notifier is
-        // supplied by hand: store() needs a source from sources(...), and watch(true) refused
-        // a registry built that way in modelrack4j 0.1.0. 0.2.0 accepts it, so this is now a
-        // choice (ADR-0014) - the two together are what give an editor and hot reload at once.
-        WritableConfigSource source = ConfigSource.ofWritableFile(config);
+        // The layer is writable so the editor can store through it, and watch(true) is what
+        // picks up an edit made outside the page - modelrack4j 0.2.0 watches the file layers
+        // whichever builder method supplied them (ADR-0015). The two together are what give
+        // an editor and hot reload at once.
         LlmRegistry<Void> registry = LlmRegistry.builder()
-                .sources(List.of(source))
-                .notifier(FileChangeNotifier.of(List.of(config), Duration.ofMillis(300)))
+                .sources(List.of(ConfigSource.ofWritableFile(config)))
+                .watch(true)
                 .build();
 
         Conversations conversations = new Conversations();
 
-        // One listener doing both jobs: onReload takes a single consumer, so registering a
-        // second one here would be a coin flip between adding and replacing.
+        // Only a reload the watcher started gets here: a store() answers its own caller with
+        // what changed and runs no listener, which is why the editor drops histories itself.
         registry.onReload(change -> {
             log.info("Configuration reloaded: {} added, {} updated, {} removed",
                     change.added(), change.updated(), change.removed());
@@ -75,7 +71,7 @@ public final class Main {
 
         Runtime.getRuntime().addShutdownHook(new Thread(registry::close));
 
-        Javalin app = RackChatApi.create(registry, source, conversations);
+        Javalin app = RackChatApi.create(registry, conversations);
         app.start(host(), port());
         log.info("RackChat is reading {} and knows {} connection(s): {}",
                 config.toAbsolutePath(), registry.names().size(), registry.names());

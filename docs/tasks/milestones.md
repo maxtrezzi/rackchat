@@ -258,3 +258,68 @@ it is the reason the upstream change was made.
 ADR-0011's hand-wired `FileChangeNotifier` is no longer the only way to have both an editor
 and hot reload. Collapsing it removes a mechanism that works and is tested, which is its own
 decision — see `open-decisions.md`.
+
+## M3.5 — Wire modelrack4j the way it is meant to be wired
+
+**Status: Done.**
+
+Three things RackChat was doing for itself that the library does, or does better. Decided in
+[ADR-0015](../adr/0015-let-the-registry-watch-its-layers-and-hand-back-the-writable-one.md),
+which amends ADR-0011; read modelrack4j's own reference alongside it, since two of the three
+are stated there as the intended use.
+
+**The watcher is the library's.** `sources(writable)` plus `watch(true)`, no hand-built
+`FileChangeNotifier` and no second list naming the file the source already names. The debounce
+is the library's default, which is the 300 ms the hand-wired one passed. Verified live: an
+edit made in a text editor was picked up by the `modelrack4j-config-watcher` thread and logged
+as `[strong] added` with no restart. A first poll immediately after the write still saw the old
+configuration — that is the debounce, not a failure, and it is why a test cannot assert on this
+without waiting.
+
+**The writable layer comes from the registry.** `RackChatApi.create(registry, conversations)`
+finds the highest-precedence `WritableConfigSource` among `registry.sources()` instead of
+being handed one. The pair that could disagree — a registry and a layer it was never built
+from — is no longer expressible.
+
+**A save now drops the histories of what it removed.** This was a defect, and the reason is
+worth keeping: **modelrack4j fires no reload listener for a `store`**, because it answers the
+caller with the `ReloadChange` instead. `Main`'s listener therefore ran for an edit made
+outside the page and never for one made in it, so a connection deleted through the editor kept
+its chat histories — and a connection of that name added back later resumed a conversation
+from before it was deleted. The endpoint now forgets what the returned change removed. The
+test that pins it fails without the fix, which is how it was checked: remove `remembers`
+through `/api/config`, add it back, and its next answer must report one message rather than
+three.
+
+**28 tests, green.** The editor's own paths were driven live as well: a store through
+`/api/config` removed a connection, `/api/connections` lost it without a restart, and the
+watcher that woke up afterwards published nothing — it re-read, found what was already live,
+and stayed quiet, exactly as the reference says.
+
+## M3.6 — The snapshot moved, and brought a method with it
+
+**Status: Done.**
+
+modelrack4j was rebuilt and reinstalled on 2026-09-07, three commits on from the one M3.4
+built against. **The 28 tests were green against the new jar before anything was changed
+here**, which is the first time ADR-0014's standing risk — an upstream `mvn install` moving
+what RackChat compiles against, with no version to say so — was actually exercised.
+
+One public method is new: `LlmRegistry.writableSources()`, the writable layers among
+`sources()`, in the same order. RackChat now calls it instead of filtering `sources()` by
+`instanceof` and casting. ADR-0015's decision is untouched — the registry is still what is
+asked for the layer to write, rather than a reference carried beside it — and only the call
+changed; the five lines it replaces were the same five the library had been shipping as its
+own example, which is why upstream removed them from both sides.
+
+The rest of what arrived is documentation, and two pieces of it describe RackChat's own
+findings: the manual now has *The state you keep beside the registry*, which is the two-route
+rule M3.5 hit as a defect, and its `LlmBundle`/`LlmConfig` records are no longer the `0.1.0`
+shapes.
+
+**One line of that guidance is deliberately not followed.** It suggests dropping state for
+`change.updated()` as well as `removed()`, "if a changed configuration invalidates yours".
+Here it does not: ADR-0012 decided that editing a block does not reshape a conversation
+already in progress, so that a changed timeout does not silently discard a chat. A memory
+built from the previous bundle keeps its policy until the conversation ends, and only
+`removed()` is forgotten.
