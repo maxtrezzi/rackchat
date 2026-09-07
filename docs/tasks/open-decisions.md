@@ -8,6 +8,10 @@ None blocking. Settled on 2026-09-06 by the owner: the configuration stays in th
 already read from (an argument or `RACKCHAT_CONFIG`), and the editor is a textarea over the
 raw HOCON — both implemented in M2, reasoning in ADR-0010.
 
+Also settled by the owner, on 2026-09-07: switching connection mid-conversation
+carries the history across, by seeding the new connection's memory once from the one the
+conversation was last using — reasoning in ADR-0013, work item M3.3.
+
 Candidates raised but not yet decided, for when they become so:
 
 - TypeScript vs. plain JavaScript for the Hyperapp frontend. M1 shipped plain JavaScript
@@ -16,10 +20,6 @@ Candidates raised but not yet decided, for when they become so:
   one per conversation and connection — ADR-0012) but it is held in memory only, so
   restarting loses every conversation while the page still shows the transcript. Persisting
   it is a new decision, not an oversight.
-- **Whether switching connection mid-conversation should carry the history across.** ADR-0012
-  says it does not, for a reason (each connection carries its own eviction policy, and a
-  shared transcript would re-run remote token estimation every turn). If it turns out to feel
-  wrong in use, that is a decision to revisit, with the cost known.
 - **Authentication.** There is none, and the editor serves the configuration's raw text. The
   server binds `127.0.0.1` for that reason. Anything that makes RackChat reachable from
   another machine needs this settled first.

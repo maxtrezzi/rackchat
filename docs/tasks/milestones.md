@@ -182,3 +182,32 @@ already embeds the underlying reason in its own text and the naive version print
 sentence twice. Tested against the real exception rather than a stand-in: the test builds a
 registry over a config with an unset variable, and asserts the rendered text names the
 variable and contains no stack frames. 22 tests, green.
+
+## M3.3 — The conversation follows a connection switch
+
+**Status: Not started.**
+
+Decided in [ADR-0013](../adr/0013-carry-the-conversation-across-a-connection-switch.md),
+which amends ADR-0012: a conversation reaching a connection it has not used before starts
+with the history it already has, instead of starting empty.
+
+What the work is:
+
+- `Conversations` remembers, per conversation, which memory the conversation last wrote to.
+- Creating a memory for a new (conversation, connection) pair replays that source's messages
+  into it, in order, through the new memory's own `add` — so the receiving connection's
+  window decides what survives the carry, and nothing arrives past it.
+- The page's note under the selector describes the connection's memory; a connection that
+  will be handed a history is a different statement from one that starts blank, and the
+  wording needs to say which.
+
+What to test, with `EchoProviderFactory` (its answers report the messages the model received,
+which is the only way to see what was carried):
+
+- Ask one connection, switch, and the second connection's first answer reports the earlier
+  turns.
+- A receiving connection with `max-messages = 2` reports only what its window allows, not the
+  whole carried history — the carry goes through eviction rather than around it.
+- A connection with no `memory` block receives nothing and still accumulates nothing.
+- Switching back finds the first memory as it was left, with no second copy of the turns it
+  already held.
