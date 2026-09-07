@@ -17,7 +17,7 @@ public record ConnectionView(
         boolean streaming,
         boolean memory) {
 
-    public static ConnectionView of(LlmBundle bundle) {
+    public static ConnectionView of(LlmBundle<?> bundle) {
         LlmConfig config = bundle.config();
         return new ConnectionView(
                 config.name(),

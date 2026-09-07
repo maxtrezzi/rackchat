@@ -16,8 +16,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -75,7 +78,7 @@ class RackChatApiTest {
 
     private Path config;
     private WritableConfigSource source;
-    private LlmRegistry registry;
+    private LlmRegistry<Void> registry;
     private Javalin app;
     private final HttpClient client = HttpClient.newHttpClient();
 
@@ -211,6 +214,28 @@ class RackChatApiTest {
         assertEquals(400, response.statusCode(), response.body());
         assertEquals(before, Files.readString(config), "the file was changed by a rejected save");
         assertTrue(registry.names().contains("fast"), "the live registry lost its connections");
+    }
+
+    /**
+     * A save can fail for a reason the editor cannot fix. modelrack4j 0.2.0 raises a separate
+     * exception for a layer it cannot write, and that is answered apart from rejected text:
+     * a {@code 400} tells the user to correct what is in front of them, which would be a lie
+     * here.
+     */
+    @Test
+    void aSaveThatCannotWriteTheFileIsNotTheEditorsMistake() throws Exception {
+        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(directory);
+        // The write goes through a temporary file beside the target, so it is the directory
+        // that has to be writable, not the configuration file.
+        Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("r-xr-xr-x"));
+        try {
+            HttpResponse<String> response = put("/api/config", edit(CONFIG, CONFIG_WITH_ONE_MORE));
+
+            assertEquals(500, response.statusCode(), response.body());
+            assertEquals(CONFIG, Files.readString(config), "the file was changed by a failed save");
+        } finally {
+            Files.setPosixFilePermissions(directory, permissions);
+        }
     }
 
     @Test
