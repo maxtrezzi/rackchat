@@ -1,6 +1,6 @@
 # ADR-0011: A writable layer with the file notifier supplied by hand
 
-- **Status:** Accepted
+- **Status:** Accepted — the hand-supplied notifier amended by ADR-0015
 - **Date:** 2026-09-06
 - **Supersedes:** —
 - **Amends:** —

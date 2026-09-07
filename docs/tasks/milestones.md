@@ -258,3 +258,40 @@ it is the reason the upstream change was made.
 ADR-0011's hand-wired `FileChangeNotifier` is no longer the only way to have both an editor
 and hot reload. Collapsing it removes a mechanism that works and is tested, which is its own
 decision — see `open-decisions.md`.
+
+## M3.5 — Wire modelrack4j the way it is meant to be wired
+
+**Status: Done.**
+
+Three things RackChat was doing for itself that the library does, or does better. Decided in
+[ADR-0015](../adr/0015-let-the-registry-watch-its-layers-and-hand-back-the-writable-one.md),
+which amends ADR-0011; read modelrack4j's own reference alongside it, since two of the three
+are stated there as the intended use.
+
+**The watcher is the library's.** `sources(writable)` plus `watch(true)`, no hand-built
+`FileChangeNotifier` and no second list naming the file the source already names. The debounce
+is the library's default, which is the 300 ms the hand-wired one passed. Verified live: an
+edit made in a text editor was picked up by the `modelrack4j-config-watcher` thread and logged
+as `[strong] added` with no restart. A first poll immediately after the write still saw the old
+configuration — that is the debounce, not a failure, and it is why a test cannot assert on this
+without waiting.
+
+**The writable layer comes from the registry.** `RackChatApi.create(registry, conversations)`
+finds the highest-precedence `WritableConfigSource` among `registry.sources()` instead of
+being handed one. The pair that could disagree — a registry and a layer it was never built
+from — is no longer expressible.
+
+**A save now drops the histories of what it removed.** This was a defect, and the reason is
+worth keeping: **modelrack4j fires no reload listener for a `store`**, because it answers the
+caller with the `ReloadChange` instead. `Main`'s listener therefore ran for an edit made
+outside the page and never for one made in it, so a connection deleted through the editor kept
+its chat histories — and a connection of that name added back later resumed a conversation
+from before it was deleted. The endpoint now forgets what the returned change removed. The
+test that pins it fails without the fix, which is how it was checked: remove `remembers`
+through `/api/config`, add it back, and its next answer must report one message rather than
+three.
+
+**28 tests, green.** The editor's own paths were driven live as well: a store through
+`/api/config` removed a connection, `/api/connections` lost it without a restart, and the
+watcher that woke up afterwards published nothing — it re-read, found what was already live,
+and stayed quiet, exactly as the reference says.

@@ -87,7 +87,7 @@ class RackChatApiTest {
         config = Files.writeString(directory.resolve("test.conf"), CONFIG);
         source = ConfigSource.ofWritableFile(config);
         registry = LlmRegistry.builder().sources(List.of(source)).watch(false).build();
-        app = RackChatApi.create(registry, source, new Conversations()).start(0);
+        app = RackChatApi.create(registry, new Conversations()).start(0);
     }
 
     @AfterEach
