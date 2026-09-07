@@ -90,6 +90,7 @@ const Send = (state) => {
       ...state,
       draft: "",
       waiting: true,
+      pending: state.selected,
       error: "",
       messages: state.messages.concat([
         { who: "you", text: message },
@@ -101,11 +102,14 @@ const Send = (state) => {
   ]
 }
 
-// The server keeps one history per (conversation, connection), so a new id is a clean start.
+// The server keeps one history per (conversation, connection) and carries the conversation
+// across a switch, so a new id — not a different connection — is what starts over.
 const NewConversation = (state) => ({
   ...state,
   conversation: newConversationId(),
   messages: [],
+  answered: [],
+  answeredLast: "",
   error: "",
 })
 
@@ -121,7 +125,20 @@ const AppendToken = (state, token) => [
   [scrollToEnd],
 ]
 
-const AnswerDone = (state, error) => ({ ...state, waiting: false, error: error || "" })
+// A completed exchange is what the server records, so a failed one leaves the note alone:
+// the connection that answered last is the one a switch would carry the history from.
+const AnswerDone = (state, error) =>
+  error
+    ? { ...state, waiting: false, error }
+    : {
+        ...state,
+        waiting: false,
+        error: "",
+        answered: state.answered.includes(state.pending)
+          ? state.answered
+          : state.answered.concat([state.pending]),
+        answeredLast: state.pending,
+      }
 
 // --- the configuration editor ----------------------------------------------
 
@@ -175,13 +192,24 @@ const messageBubble = (message) =>
     h("div", { class: "body" }, text(message.text)),
   ])
 
+// A connection with no `memory` block answers every question on its own. Saying so here is
+// the difference between a documented limit and something that looks broken — and a
+// connection about to be handed the conversation is a different statement from one that is
+// already keeping it, so the note names where the history comes from.
+const memoryNote = (state, current) => {
+  if (!current.memory) return "no memory: each question stands alone"
+  if (state.answered.includes(current.name)) return "remembers this conversation"
+  const source = state.connections.find((connection) => connection.name === state.answeredLast)
+  return source && source.memory
+    ? "remembers this conversation, starting from what " + source.name + " kept"
+    : "remembers this conversation"
+}
+
 const describe = (state) => {
   const current = state.connections.find((connection) => connection.name === state.selected)
   if (!current) return ""
   const traits = [current.streaming ? "streamed" : "one answer"]
-  // A connection with no `memory` block answers every question on its own. Saying so here is
-  // the difference between a documented limit and something that looks broken.
-  traits.push(current.memory ? "remembers this conversation" : "no memory: each question stands alone")
+  traits.push(memoryNote(state, current))
   const summary = traits.join(", ")
   return current.description ? current.description + " (" + summary + ")" : summary
 }
@@ -291,6 +319,9 @@ app({
       selected: "",
       draft: "",
       messages: [],
+      answered: [],
+      answeredLast: "",
+      pending: "",
       waiting: false,
       error: "",
       configId: "",

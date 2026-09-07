@@ -27,7 +27,7 @@ cd rackchat/backend
 mvn verify
 ```
 
-`verify` compiles and runs the 19 tests. They need no key and no network connection, so a
+`verify` compiles and runs the 26 tests. They need no key and no network connection, so a
 failure here is a real failure, not a missing credential.
 
 ## 2. Write your configuration
@@ -124,8 +124,11 @@ configuration, and any key written literally in it, on the network. See
   `streaming = true`.
 - **Follow up.** With a `memory` block, the next question carries the conversation.
   **New conversation** starts a clean one.
-- **Switch connection** in the selector. Each connection keeps its own history, so the one you
-  switch to does not know what the previous one was told (ADR-0012).
+- **Switch connection** in the selector. The conversation goes with you: the connection you
+  switch to is told what has been said so far, as far as its own `memory` block keeps it
+  ([ADR-0013](adr/0013-carry-the-conversation-across-a-connection-switch.md)). A connection
+  with no `memory` block is handed nothing, and there is nothing to carry away from it either.
+  **New conversation** — not a different connection — is what starts over.
 - **Edit the configuration** in the second tab. Save validates the whole configuration before
   writing anything: if the text would not load, nothing is saved and the message tells you
   why. A connection you add appears in the selector without a restart.

@@ -70,4 +70,5 @@ way it is.
 | [0009](0009-stream-the-answer-over-server-sent-events.md) | Stream the answer over Server-Sent Events, framed as JSON | Accepted |
 | [0010](0010-edit-the-raw-hocon-in-a-textarea.md) | Edit the raw HOCON in a textarea, saved with an optimistic check | Accepted |
 | [0011](0011-a-writable-layer-with-a-notifier-supplied-by-hand.md) | A writable layer with the file notifier supplied by hand | Accepted |
-| [0012](0012-memory-lives-on-the-server-one-per-conversation-and-connection.md) | Memory lives on the server, one per conversation and connection | Accepted |
+| [0012](0012-memory-lives-on-the-server-one-per-conversation-and-connection.md) | Memory lives on the server, one per conversation and connection | Accepted — amended by [0013](0013-carry-the-conversation-across-a-connection-switch.md) |
+| [0013](0013-carry-the-conversation-across-a-connection-switch.md) | Carry the conversation across a connection switch by seeding the new memory | Accepted |

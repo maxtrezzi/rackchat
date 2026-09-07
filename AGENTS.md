@@ -104,6 +104,14 @@ here, because that would be the application overruling a configuration that said
 Memory is written only when an answer comes back, so a failed call leaves no dangling
 question.
 
+**A switch carries the conversation, through the new connection's own `add` (ADR-0013).**
+The first time a conversation reaches a connection, its memory is seeded with the history of
+the connection that conversation last answered on — replayed message by message, so the
+receiving `memory` block still decides what survives. Copying the message list instead would
+put text in front of a model that its own window excludes, which is exactly the guarantee
+ADR-0012 exists for. Seeding happens once, at creation: memories are not kept in step
+afterwards.
+
 **The one way to see whether the model was told anything is `EchoProviderFactory`** in test
 scope: a modelrack4j provider whose model answers with the messages it received. Its answers
 render as a bare `ai` with no text **on purpose** — an earlier answer is itself such a
@@ -156,7 +164,7 @@ a vendored Hyperapp (ADR-0008).
 
 ```bash
 cd backend && mvn compile                      # compile
-cd backend && mvn test                         # 22 tests, no keys and no network needed
+cd backend && mvn test                         # 26 tests, no keys and no network needed
 cd backend && mvn test -Dtest=RackChatApiTest  # one class
 ```
 
