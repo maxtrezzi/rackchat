@@ -1,6 +1,6 @@
 # ADR-0012: Memory lives on the server, one per conversation and connection
 
-- **Status:** Accepted
+- **Status:** Accepted — the connection switch amended by ADR-0013
 - **Date:** 2026-09-06
 - **Supersedes:** —
 - **Amends:** —
