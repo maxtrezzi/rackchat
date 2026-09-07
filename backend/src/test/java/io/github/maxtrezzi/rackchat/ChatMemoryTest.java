@@ -23,9 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Whether a follow-up question carries the conversation, checked against a fake provider that
- * answers with the messages it was given ({@link EchoProviderFactory}). A real provider cannot
- * answer this question offline, and "the model remembered" is not observable any other way.
+ * Whether a follow-up question carries the conversation — and whether a change of connection
+ * carries it too (ADR-0013) — checked against a fake provider that answers with the messages
+ * it was given ({@link EchoProviderFactory}). A real provider cannot answer this question
+ * offline, and "the model remembered" is not observable any other way.
  */
 class ChatMemoryTest {
 
@@ -101,12 +102,59 @@ class ChatMemoryTest {
     }
 
     @Test
-    void switchingConnectionStartsThatConnectionsOwnHistory() throws Exception {
+    void switchingConnectionCarriesTheConversation() throws Exception {
         ask("remembers", "one", "c1");
 
-        // Same conversation, different connection: its memory carries its own eviction policy,
-        // so it starts empty rather than inheriting a transcript shaped by another model.
-        assertTrue(ask("streamed", "two", "c1").contains("saw 1: user=two"));
+        // Same conversation, different connection: the new memory is seeded with what the
+        // conversation already has, so the second connection is told about the first turn.
+        assertTrue(ask("streamed", "two", "c1").contains("saw 3: user=one|ai|user=two"));
+    }
+
+    /**
+     * The carry goes <em>through</em> the receiving connection's eviction rather than around
+     * it: four messages replayed into a {@code max-messages = 2} window leave the last
+     * exchange, not the whole history.
+     */
+    @Test
+    void theReceivingWindowLimitsWhatIsCarried() throws Exception {
+        ask("remembers", "one", "c1");
+        ask("remembers", "two", "c1");
+
+        String carried = ask("shortMemory", "three", "c1");
+
+        assertTrue(carried.contains("saw 3: user=two|ai|user=three"), carried);
+        assertTrue(!carried.contains("user=one"), "the window must apply to a carried history: " + carried);
+    }
+
+    @Test
+    void aConnectionWithoutAMemoryBlockIsHandedNothing() throws Exception {
+        ask("remembers", "one", "c1");
+
+        // There is nowhere to put a history on a connection that keeps none.
+        assertTrue(ask("forgets", "two", "c1").contains("saw 1: user=two"));
+    }
+
+    @Test
+    void aTurnOnAConnectionWithoutMemoryLeavesNothingToCarry() throws Exception {
+        ask("remembers", "one", "c1");
+        ask("forgets", "two", "c1");
+
+        // The conversation's last exchange was on a connection that kept nothing, so that is
+        // what the next one is given.
+        assertTrue(ask("streamed", "three", "c1").contains("saw 1: user=three"));
+    }
+
+    @Test
+    void switchingBackFindsThatHistoryAsItWasLeft() throws Exception {
+        ask("remembers", "one", "c1");
+        ask("streamed", "two", "c1");
+
+        String back = ask("remembers", "three", "c1");
+
+        // Seeding happens once, at creation: the memories do not stay in step afterwards, so
+        // this one still holds its own turn and no second copy of it.
+        assertTrue(back.contains("saw 3: user=one|ai|user=three"), back);
+        assertTrue(!back.contains("user=two"), "memories must not be kept in step: " + back);
     }
 
     @Test
