@@ -53,10 +53,11 @@ public final class Main {
         }
 
         // The layer is writable so the editor can store through it, and the notifier is
-        // supplied by hand because watch(true) refuses a registry built from sources(...) in
-        // modelrack4j 0.1.0 - the two together are what give an editor and hot reload at once.
+        // supplied by hand: store() needs a source from sources(...), and watch(true) refused
+        // a registry built that way in modelrack4j 0.1.0. 0.2.0 accepts it, so this is now a
+        // choice (ADR-0014) - the two together are what give an editor and hot reload at once.
         WritableConfigSource source = ConfigSource.ofWritableFile(config);
-        LlmRegistry registry = LlmRegistry.builder()
+        LlmRegistry<Void> registry = LlmRegistry.builder()
                 .sources(List.of(source))
                 .notifier(FileChangeNotifier.of(List.of(config), Duration.ofMillis(300)))
                 .build();
