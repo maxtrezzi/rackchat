@@ -72,3 +72,4 @@ way it is.
 | [0011](0011-a-writable-layer-with-a-notifier-supplied-by-hand.md) | A writable layer with the file notifier supplied by hand | Accepted |
 | [0012](0012-memory-lives-on-the-server-one-per-conversation-and-connection.md) | Memory lives on the server, one per conversation and connection | Accepted — amended by [0013](0013-carry-the-conversation-across-a-connection-switch.md) |
 | [0013](0013-carry-the-conversation-across-a-connection-switch.md) | Carry the conversation across a connection switch by seeding the new memory | Accepted |
+| [0014](0014-build-against-the-local-modelrack4j-0-2-0-snapshot.md) | Build against the local modelrack4j `0.2.0-SNAPSHOT` | Accepted |

@@ -57,7 +57,7 @@ final class Conversations {
      * when the connection has no {@code memory} block configured. A memory created here starts
      * with the conversation's history behind it, as far as this connection's window keeps it.
      */
-    synchronized Optional<ChatMemory> memoryFor(LlmBundle bundle, String conversation) {
+    synchronized Optional<ChatMemory> memoryFor(LlmBundle<?> bundle, String conversation) {
         Optional<ChatMemoryProvider> provider = bundle.chatMemoryProvider();
         if (provider.isEmpty()) {
             return Optional.empty();
@@ -80,7 +80,7 @@ final class Conversations {
      * <p>The connection is recorded even when it has no memory of its own — the conversation
      * did move there, and what it kept is nothing.
      */
-    synchronized void remember(LlmBundle bundle, String conversation, UserMessage question, AiMessage answer) {
+    synchronized void remember(LlmBundle<?> bundle, String conversation, UserMessage question, AiMessage answer) {
         memoryFor(bundle, conversation).ifPresent(remembered -> {
             synchronized (remembered) {
                 remembered.add(question);

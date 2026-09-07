@@ -50,3 +50,4 @@ Branch before starting, never commit to `main`, and name the branch after the it
 | [M3](milestones.md#m3--a-chat-that-remembers) | A chat that remembers | **Done** — ADR-0012; 19 tests green, memory made testable with a fake provider |
 | [M3.1](milestones.md#m31--startup-failures-read-like-messages-not-crashes) | Startup failures read like messages | **Done** — 22 tests green; two exceptions caught, everything else keeps its trace |
 | [M3.3](milestones.md#m33--the-conversation-follows-a-connection-switch) | The conversation follows a connection switch | **Done** — ADR-0013; 26 tests green, the switch driven live against the echo provider |
+| [M3.4](milestones.md#m34--modelrack4j-020-snapshot) | modelrack4j `0.2.0-SNAPSHOT`, from the local repository | **Done** — ADR-0014; 27 tests green, an unconfigured start driven live |

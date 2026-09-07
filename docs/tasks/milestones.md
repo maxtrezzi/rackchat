@@ -223,3 +223,38 @@ user=alone`. No key and no network.
 **What stays open:** the carry has only been seen on `message-window` memories. The cost the
 ADR accepts — one eviction pass at the switch — is only visible on a `token-window` memory
 over a provider with a remote estimator, which is another thing this machine cannot exercise.
+
+## M3.4 — modelrack4j 0.2.0-SNAPSHOT
+
+**Status: Done.**
+
+`modelrack4j.version` is `0.2.0-SNAPSHOT`, resolved from the local Maven repository rather
+than Maven Central, decided in
+[ADR-0014](../adr/0014-build-against-the-local-modelrack4j-0-2-0-snapshot.md). Building
+RackChat now needs `mvn install` in the modelrack4j working copy first; that prerequisite is
+in `docs/running-locally.md`.
+
+**The compile breaks in a way a raw type hides.** `LlmRegistry`, `LlmBundle` and `LlmSnapshot`
+are generic now. Leaving them raw still compiles the declaration and then erases every generic
+member of the class, so `onReload(change -> change.added())` fails with `change` inferred as
+`Object` and `snapshot.names()` stops producing `String`. RackChat builds an `LlmRegistry<Void>`
+where it constructs one and takes `<?>` everywhere else, since it registers no
+`CustomPropertiesHandler` and never reads custom properties.
+
+**A failed write is no longer an editor mistake.** `ConfigAccessException` is a separate type
+from `ConfigValidationException` and neither is the other's subclass, so `/api/config` answers
+`400` for text that would not load and `500` for a file it could not write. **27 tests** — the
+new one makes the temporary directory read-only, saves valid text, and asserts `500` and a
+byte-identical file. Without the split that save would have been reported as text to fix, and
+there is nothing in the editor to fix.
+
+**Verified live: RackChat starts unconfigured.** With `llm {}` — and with a completely empty
+file — it starts, logs `knows 0 connection(s): []`, and serves an empty `/api/connections`. A
+`PUT /api/config` adding an `echo` block was accepted, the connection appeared without a
+restart, and it answered `saw 1: user=hello`. This is the route M3.2 recorded as closed, and
+it is the reason the upstream change was made.
+
+**Not taken up in this move:** `watch(true)` now accepts layers given to `sources(...)`, so
+ADR-0011's hand-wired `FileChangeNotifier` is no longer the only way to have both an editor
+and hot reload. Collapsing it removes a mechanism that works and is tested, which is its own
+decision — see `open-decisions.md`.
