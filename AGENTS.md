@@ -98,12 +98,10 @@ ask the model the same question again, and pay for it.
 told to. `RackChatApiTest` pins this so the next person meets it as a fact rather than a
 mystery.
 
-**RackChat depends on modelrack4j `0.2.0`, which Maven Central does not have yet
-(ADR-0014).** It gets into the local repository by `mvn install` in the modelrack4j working
-copy, so a checkout without that build does not compile — which is why both CI jobs clone and
-install it before building anything. Check the installed jar with `javap` before using a
-method: the jar in `~/.m2` is the only statement of what this project can call today, and
-until Central has `0.2.0` the coordinate does not prove which build is sitting there.
+**RackChat depends on modelrack4j `0.2.0` from Maven Central.** A clone builds with nothing
+installed by hand — the local-snapshot arrangement ADR-0014 set up is over, and its cost with
+it. What survives from that period is the habit worth keeping: check the jar with `javap`
+before using a method rather than describing the API from memory.
 
 ```bash
 javap -cp ~/.m2/repository/io/github/maxtrezzi/modelrack4j-core/0.2.0/modelrack4j-core-0.2.0.jar \
@@ -235,9 +233,7 @@ than repeating its content.
 **CI is `.github/workflows/build.yml`**, on every push and pull request to `main`: `mvn
 verify` on JDK 21 and 25, and a third job that runs the same build with the provider
 credential variables set to the empty string. That last one is not decoration — it is what
-keeps the paragraph below a fact instead of a claim. Both legs clone modelrack4j and install
-it first; delete that step, and the matching paragraph in `docs/running-locally.md`, the day
-`0.2.0` reaches Maven Central.
+keeps the paragraph below a fact instead of a claim.
 
 **The tests need no API key and no network**, because building a bundle never calls the
 provider: the fake key in `RackChatApiTest` only fails at the first request, which no test

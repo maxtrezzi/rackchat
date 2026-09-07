@@ -37,8 +37,5 @@ Candidates raised but not yet decided, for when they become so:
 - **Packaging.** Running it is still `dependency:build-classpath` plus a `java -cp` line,
   now behind `backend/run.sh` rather than typed out. A shaded jar or `exec:java` would end
   the classpath file itself; nobody has decided which, and the script lowered the pressure to.
-- **Deleting the modelrack4j install step.** M4 moved the property from `0.2.0-SNAPSHOT` to
-  `0.2.0`, so nothing in the build changes when Maven Central gets it. What is still waiting on
-  the publication is the *prerequisite*: the paragraph in `docs/running-locally.md`, the same
-  one in `README.md` and `CONTRIBUTING.md`, and the clone-and-install step in both CI jobs. They
-  go together, and none of them is safe to remove before Central actually serves `0.2.0`.
+- *(none left about the dependency — `0.2.0` reached Maven Central on 2026-09-07 and the
+  install-from-source prerequisite went with it; work item M4.1.)*

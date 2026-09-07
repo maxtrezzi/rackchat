@@ -408,3 +408,31 @@ is the first thing anybody looks at, and the honest version of it here is the fa
 answering `saw 3: user=…|ai|user=…` — which happens to show the memory working, in the one way
 it is visible from outside. They were taken with the configuration at `/tmp/rackchat/` rather
 than under a home directory, because the configuration tab prints the path it is editing.
+
+## M4.1 — modelrack4j 0.2.0 reached Maven Central
+
+**Status: Done.**
+
+Published on 2026-09-07, the same day M4 was written around waiting for it. Nothing in
+`backend/pom.xml` changed — M4 had already moved the property to `0.2.0`, which was the point
+of doing it ahead of the release. What went is the prerequisite: the clone-and-install step in
+both CI jobs, the bullet in `docs/running-locally.md`, and the paragraph that had opened both
+`README.md` and `CONTRIBUTING.md`. **A clone of this repository now builds with nothing
+installed by hand**, which it has not done since M3.4.
+
+**The published jar is byte-identical to the one the tests were run against** — sha1
+`7446319f7c2f4ca930da0e287664f474f4ae4778` for `modelrack4j-core-0.2.0.jar`, matching what
+`mvn install` had put in `~/.m2`. So the 28 green tests are green against exactly the artifact
+a stranger downloads, rather than against a local build that happens to carry the same version
+number.
+
+**Checked from an empty local repository**, not from this machine's: `mvn -Dmaven.repo.local=`
+a fresh directory resolved all six modelrack4j modules plus the rest of the tree from Central
+and ran the suite green. Building with `~/.m2` as it stands proves nothing here — the jar
+installed from source sits at the same coordinate and would answer for the release whether or
+not Central had it.
+
+**This closes ADR-0014 by its own terms.** That ADR said returning to a released version was
+one property and not a decision anyone needed to revisit it for, and its status stays
+`Accepted`: the record of why the snapshot period existed is what makes M3.4 through M3.6
+legible. What it decided is simply over.

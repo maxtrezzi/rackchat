@@ -44,19 +44,13 @@ untouched.
 
 ## Running it
 
-Java 21 and Maven. One dependency is not on Maven Central yet, so it is installed from source
-first:
+Java 21 and Maven; everything else comes from Maven Central. Copy
+`backend/rackchat.example.conf`, fill in the environment variables it names, and start it:
 
 ```bash
-git clone https://github.com/maxtrezzi/modelrack4j
-cd modelrack4j && mvn -DskipTests install    # until modelrack4j 0.2.0 is published
-```
-
-Then copy `backend/rackchat.example.conf`, fill in the environment variables it names, and
-start it:
-
-```bash
+git clone https://github.com/maxtrezzi/rackchat
 cd rackchat/backend
+cp rackchat.example.conf rackchat.conf
 OPENAI_API_KEY=... ./run.sh rackchat.conf
 ```
 

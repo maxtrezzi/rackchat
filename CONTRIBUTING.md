@@ -47,16 +47,14 @@ changing anything.
 
 ## Building
 
-Java 21 and Maven. One dependency does not resolve from Maven Central yet, so it is installed
-from source first — see [`docs/running-locally.md`](docs/running-locally.md) for the full
-version, including how to run the whole application with no API key at all.
+Java 21 and Maven; every dependency resolves from Maven Central. See
+[`docs/running-locally.md`](docs/running-locally.md) for the full version, including how to run
+the whole application with no API key at all.
 
 ```bash
-git clone https://github.com/maxtrezzi/modelrack4j
-cd modelrack4j && mvn -DskipTests install    # until modelrack4j 0.2.0 is on Maven Central
-
-cd ../rackchat/backend
-mvn verify                                   # compile and the 28 tests
+git clone https://github.com/maxtrezzi/rackchat
+cd rackchat/backend
+mvn verify    # compile and the 28 tests
 ```
 
 **The build must pass with no keys and no network.** Building a bundle never calls the

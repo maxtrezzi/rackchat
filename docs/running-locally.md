@@ -7,17 +7,7 @@ OpenJDK 21.0.10 and Maven 3.9.11. The output shown is the output those commands 
 
 - **Java 21 or newer.** The backend is compiled for 21 (ADR-0007).
 - **Maven 3.9 or newer.**
-- **modelrack4j `0.2.0` in your local Maven repository.** RackChat builds against a version
-  Maven Central does not have yet, so it has to be installed from source first (ADR-0014).
-  This step disappears when `0.2.0` is published:
-
-  ```bash
-  git clone https://github.com/maxtrezzi/modelrack4j
-  cd modelrack4j && mvn -DskipTests install
-  ```
-
-  That is modelrack4j's own build, and the one step on this page whose output is not shown
-  here.
+- **Nothing else.** Every dependency, modelrack4j included, resolves from Maven Central.
 - **An API key** for at least one provider — OpenAI, Anthropic, Google Gemini or GLM. If you
   do not have one yet, jump to [Trying it without an account](#trying-it-without-an-account):
   the application runs and the chat works, answered by a fake provider.

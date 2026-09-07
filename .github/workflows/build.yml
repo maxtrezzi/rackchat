@@ -31,14 +31,6 @@ jobs:
           java-version: ${{ matrix.jdk }}
           cache: maven
 
-      # modelrack4j 0.2.0 is not on Maven Central yet (ADR-0014), so the one dependency this
-      # build cannot resolve is installed from its own source first. Delete this step, and
-      # the paragraph in docs/running-locally.md that matches it, the day 0.2.0 is published.
-      - name: Install modelrack4j 0.2.0 from source
-        run: |
-          git clone --depth 1 https://github.com/maxtrezzi/modelrack4j "$RUNNER_TEMP/modelrack4j"
-          mvn -B --no-transfer-progress -f "$RUNNER_TEMP/modelrack4j/pom.xml" -DskipTests install
-
       - name: Build
         working-directory: backend
         run: mvn -B --no-transfer-progress verify
@@ -54,11 +46,6 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-
-      - name: Install modelrack4j 0.2.0 from source
-        run: |
-          git clone --depth 1 https://github.com/maxtrezzi/modelrack4j "$RUNNER_TEMP/modelrack4j"
-          mvn -B --no-transfer-progress -f "$RUNNER_TEMP/modelrack4j/pom.xml" -DskipTests install
 
       # The suite is claimed to need no key and no network, because building a bundle never
       # calls the provider. This job is what turns that claim into something checked: a test
