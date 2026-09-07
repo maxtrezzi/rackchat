@@ -99,15 +99,18 @@ public final class RackChatApi {
      * The layer the editor writes: the highest-precedence writable one the registry was built
      * from. Asking the registry is what keeps the two from disagreeing — a source carried
      * alongside can be one the registry never had, and a store through it would be refused.
+     *
+     * <p>{@code writableSources()} answers in {@code sources()} order, lowest precedence
+     * first, and the layer it hands back is the object {@code store} accepts.
      */
     private static WritableConfigSource writableLayer(LlmRegistry<?> registry) {
-        return registry.sources().reversed().stream()
-                .filter(WritableConfigSource.class::isInstance)
-                .map(WritableConfigSource.class::cast)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "RackChat needs a writable configuration layer; the registry was built from "
-                                + registry.sources().size() + " layer(s), none of them writable."));
+        List<WritableConfigSource> writable = registry.writableSources();
+        if (writable.isEmpty()) {
+            throw new IllegalStateException(
+                    "RackChat needs a writable configuration layer; the registry was built from "
+                            + registry.sources().size() + " layer(s), none of them writable.");
+        }
+        return writable.getLast();
     }
 
     private static ConfigDocument document(WritableConfigSource source) {

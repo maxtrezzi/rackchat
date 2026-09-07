@@ -295,3 +295,31 @@ three.
 `/api/config` removed a connection, `/api/connections` lost it without a restart, and the
 watcher that woke up afterwards published nothing — it re-read, found what was already live,
 and stayed quiet, exactly as the reference says.
+
+## M3.6 — The snapshot moved, and brought a method with it
+
+**Status: Done.**
+
+modelrack4j was rebuilt and reinstalled on 2026-09-07, three commits on from the one M3.4
+built against. **The 28 tests were green against the new jar before anything was changed
+here**, which is the first time ADR-0014's standing risk — an upstream `mvn install` moving
+what RackChat compiles against, with no version to say so — was actually exercised.
+
+One public method is new: `LlmRegistry.writableSources()`, the writable layers among
+`sources()`, in the same order. RackChat now calls it instead of filtering `sources()` by
+`instanceof` and casting. ADR-0015's decision is untouched — the registry is still what is
+asked for the layer to write, rather than a reference carried beside it — and only the call
+changed; the five lines it replaces were the same five the library had been shipping as its
+own example, which is why upstream removed them from both sides.
+
+The rest of what arrived is documentation, and two pieces of it describe RackChat's own
+findings: the manual now has *The state you keep beside the registry*, which is the two-route
+rule M3.5 hit as a defect, and its `LlmBundle`/`LlmConfig` records are no longer the `0.1.0`
+shapes.
+
+**One line of that guidance is deliberately not followed.** It suggests dropping state for
+`change.updated()` as well as `removed()`, "if a changed configuration invalidates yours".
+Here it does not: ADR-0012 decided that editing a block does not reshape a conversation
+already in progress, so that a changed timeout does not silently discard a chat. A memory
+built from the previous bundle keeps its policy until the conversation ends, and only
+`removed()` is forgotten.

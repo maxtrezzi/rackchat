@@ -74,8 +74,8 @@ to look in the wrong place.
 write (ADR-0011, amended by ADR-0015).** `store()` needs a source from `sources(...)`, and
 since `0.2.0` the shipped watcher covers those too — so there is no hand-wired
 `FileChangeNotifier` and no second list naming the same file. `RackChatApi.create` takes no
-configuration source: it asks `registry.sources()` for the highest-precedence writable layer,
-which is what stops a caller pairing a registry with a layer it was never built from. A
+configuration source: it asks `registry.writableSources()` for the highest-precedence writable
+layer, which is what stops a caller pairing a registry with a layer it was never built from. A
 registry built with `configFiles(...)` alone has no writable source at all, and that silently
 removes the editor.
 
