@@ -60,7 +60,8 @@ public final class RackChatApi {
     public record ConfigRejected(String message) {
     }
 
-    public static Javalin create(LlmRegistry<?> registry, WritableConfigSource configSource, Conversations conversations) {
+    public static Javalin create(LlmRegistry<?> registry, Conversations conversations) {
+        WritableConfigSource configSource = writableLayer(registry);
         return Javalin.create(config -> {
             config.concurrency.useVirtualThreads = true;
             config.staticFiles.add("/public", Location.CLASSPATH);
@@ -68,7 +69,7 @@ public final class RackChatApi {
             config.routes.get("/health", ctx -> ctx.result("ok"));
             config.routes.get("/api/connections", ctx -> ctx.json(connections(registry)));
             config.routes.get("/api/config", ctx -> ctx.json(document(configSource)));
-            config.routes.put("/api/config", ctx -> save(ctx, registry, configSource));
+            config.routes.put("/api/config", ctx -> save(ctx, registry, configSource, conversations));
             config.routes.sse("/api/chat", client -> {
                 client.keepAlive();
 
@@ -94,6 +95,24 @@ public final class RackChatApi {
         });
     }
 
+    /**
+     * The layer the editor writes: the highest-precedence writable one the registry was built
+     * from. Asking the registry is what keeps the two from disagreeing — a source carried
+     * alongside can be one the registry never had, and a store through it would be refused.
+     *
+     * <p>{@code writableSources()} answers in {@code sources()} order, lowest precedence
+     * first, and the layer it hands back is the object {@code store} accepts.
+     */
+    private static WritableConfigSource writableLayer(LlmRegistry<?> registry) {
+        List<WritableConfigSource> writable = registry.writableSources();
+        if (writable.isEmpty()) {
+            throw new IllegalStateException(
+                    "RackChat needs a writable configuration layer; the registry was built from "
+                            + registry.sources().size() + " layer(s), none of them writable.");
+        }
+        return writable.getLast();
+    }
+
     private static ConfigDocument document(WritableConfigSource source) {
         return new ConfigDocument(source.id(), source.text());
     }
@@ -111,8 +130,14 @@ public final class RackChatApi {
      * text that would not load, and {@code 500} for a file that could not be written. The
      * last two are different exceptions in modelrack4j 0.2.0 and are not each other's
      * subclass, so neither catch can swallow the other.
+     *
+     * <p><strong>A store raises no reload event</strong> — modelrack4j hands the change back
+     * to whoever made it instead. So the histories of connections this save removed are
+     * dropped here; the listener that does it for an edit made outside the page never runs
+     * for this one.
      */
-    private static void save(io.javalin.http.Context ctx, LlmRegistry<?> registry, WritableConfigSource source) {
+    private static void save(io.javalin.http.Context ctx, LlmRegistry<?> registry,
+                             WritableConfigSource source, Conversations conversations) {
         ConfigEdit edit = ctx.bodyAsClass(ConfigEdit.class);
         if (edit == null || edit.text() == null || edit.expected() == null) {
             ctx.status(400).json(new ConfigRejected("expected and text are both required"));
@@ -120,7 +145,8 @@ public final class RackChatApi {
         }
 
         try {
-            registry.storeIfUnchanged(source, edit.expected(), edit.text());
+            registry.storeIfUnchanged(source, edit.expected(), edit.text())
+                    .ifPresent(change -> conversations.forget(change.removed()));
             log.info("Configuration saved through the editor; connections are now {}", registry.names());
             ctx.json(document(source));
         } catch (StaleLayerException e) {

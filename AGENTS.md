@@ -70,13 +70,20 @@ editor, `400` for text that would not load, `500` for a file that could not be w
 distinguishable — telling someone to fix their text when the directory is read-only sends them
 to look in the wrong place.
 
-**The registry is wired by hand (ADR-0011).** `sources(writable)` plus an explicit
-`FileChangeNotifier`, not `configFiles(...)` with `watch(true)` — because `store()` needs a
-source from `sources(...)`, and modelrack4j `0.1.0` refused `watch(true)` on a registry built
-that way. **`0.2.0` accepts it** (its ADR-0050), so the hand-wiring is now a choice rather
-than the only route; it stays until someone decides otherwise, because collapsing a mechanism
-that works and is tested is a decision, not a tidy-up. What has not changed: a registry built
-with `configFiles(...)` alone has no writable source, and that silently removes the editor.
+**The registry is `sources(writable)` plus `watch(true)`, and it hands back the layer to
+write (ADR-0011, amended by ADR-0015).** `store()` needs a source from `sources(...)`, and
+since `0.2.0` the shipped watcher covers those too — so there is no hand-wired
+`FileChangeNotifier` and no second list naming the same file. `RackChatApi.create` takes no
+configuration source: it asks `registry.writableSources()` for the highest-precedence writable
+layer, which is what stops a caller pairing a registry with a layer it was never built from. A
+registry built with `configFiles(...)` alone has no writable source at all, and that silently
+removes the editor.
+
+**A `store` fires no reload listener.** modelrack4j answers the caller with the
+`ReloadChange` instead — the caller made the change, so it is told rather than notified. The
+editor endpoint therefore drops the histories of connections a save removed itself; only the
+watcher's reloads reach the listener in `Main`. A test pins it: a connection removed and added
+again through `/api/config` starts empty rather than resuming what it was told before.
 
 **SSE frames carry JSON, not bare text (ADR-0009).** SSE is line-based and strips one space
 after `data:`, so a raw token silently loses leading whitespace and every newline. `token`
@@ -198,7 +205,7 @@ a vendored Hyperapp (ADR-0008).
 
 ```bash
 cd backend && mvn compile                      # compile
-cd backend && mvn test                         # 27 tests, no keys and no network needed
+cd backend && mvn test                         # 28 tests, no keys and no network needed
 cd backend && mvn test -Dtest=RackChatApiTest  # one class
 ```
 
