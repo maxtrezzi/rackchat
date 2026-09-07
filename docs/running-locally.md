@@ -190,11 +190,10 @@ on the classpath*.
 Passing `--echo` forces the test sources on regardless, which is what you want when the file
 has no echo block yet and you mean to add one from the editor while it runs.
 
-**A configuration that defines no connection at all cannot start RackChat**, so an empty file
-is not a way to reach the editor and fill it in from there: modelrack4j refuses to build a
-registry with nothing in it (*"No 'llm' block found in any configuration layer"*, or *"The
-'llm' block is empty"* for an `llm {}` that has no blocks under it). Until that changes, the
-echo connection above is also the cheapest way to give a first start something to load.
+An empty configuration file works too: RackChat starts with no connections, the page says
+so, and the editor is reachable to add one — modelrack4j 0.2.0 accepts a registry with nothing
+in it (ADR-0014). The echo connection above is still the cheapest way to give a first start
+something to load without an account, not the only way to start at all.
 
 Ask two questions in the page and you will see the memory working:
 
