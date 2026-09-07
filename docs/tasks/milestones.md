@@ -368,3 +368,43 @@ Here it does not: ADR-0012 decided that editing a block does not reshape a conve
 already in progress, so that a changed timeout does not silently discard a chat. A memory
 built from the previous bundle keeps its policy until the conversation ends, and only
 `removed()` is forgotten.
+
+## M4 — A public repository
+
+**Status: Done.**
+
+The repository is public under Apache-2.0, decided in
+[ADR-0016](../adr/0016-publish-the-repository-under-apache-2-0.md). `LICENSE` and `NOTICE` at
+the root, licence, `scm` and developer metadata in `backend/pom.xml`, and `CONTRIBUTING.md`
+asking for an issue before a pull request. The vendored Hyperapp keeps its own MIT licence
+beside the file it covers, which is what `NOTICE` names.
+
+**The history carried thirteen session-link trailers**, on every commit back to the root. They
+point at a conversation only the owner can open, and publishing would have fixed them in place
+permanently — the one part of going public that cannot be corrected afterwards. Rewriting them
+out is cheap only while the repository is private, which is why it happened before the switch
+rather than after. `Co-Authored-By` stayed: it names a role, not a private URL.
+
+**CI exists for the first time.** `.github/workflows/build.yml` runs `mvn verify` on JDK 21 and
+25, plus a third job with `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` and
+`ZHIPU_API_KEY` set to the empty string. That job is the point of the exercise: "the tests need
+no key and no network" has been asserted since M1 and true only because nobody had checked it
+on a machine other than this one.
+
+**Every job installs modelrack4j from source before it can build anything**, which is ADR-0014's
+cost showing up somewhere new. It is also the clearest possible statement of when the step goes:
+the day `0.2.0` is on Maven Central, the step and the paragraph in `docs/running-locally.md`
+are deleted together, and leaving it would mean CI quietly testing against modelrack4j's `main`
+rather than the release the build asks for.
+
+**`modelrack4j.version` is now `0.2.0` rather than `0.2.0-SNAPSHOT`.** ADR-0014 already said
+this was one property and not a decision to revisit. Taking it now, ahead of the publication,
+means the coordinate stops moving under the build: an `mvn install` upstream no longer changes
+what RackChat compiles against without a version saying so. 28 tests green offline against the
+released jar.
+
+**The screenshots are of the echo provider, on purpose.** A README picture of a chat application
+is the first thing anybody looks at, and the honest version of it here is the fake provider
+answering `saw 3: user=…|ai|user=…` — which happens to show the memory working, in the one way
+it is visible from outside. They were taken with the configuration at `/tmp/rackchat/` rather
+than under a home directory, because the configuration tab prints the path it is editing.

@@ -11,13 +11,37 @@
 
   <name>RackChat Backend</name>
   <description>Backend for RackChat: a Javalin API in front of a modelrack4j registry.</description>
+  <url>https://github.com/maxtrezzi/rackchat</url>
+  <inceptionYear>2026</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>maxtrezzi</id>
+      <name>maxtrezzi</name>
+      <url>https://github.com/maxtrezzi</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/maxtrezzi/rackchat.git</connection>
+    <developerConnection>scm:git:git@github.com:maxtrezzi/rackchat.git</developerConnection>
+    <url>https://github.com/maxtrezzi/rackchat</url>
+  </scm>
 
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <javalin.version>7.2.3</javalin.version>
-    <modelrack4j.version>0.2.0-SNAPSHOT</modelrack4j.version>
+    <modelrack4j.version>0.2.0</modelrack4j.version>
     <jackson.version>2.22.1</jackson.version>
     <slf4j.version>2.0.17</slf4j.version>
     <junit.version>5.14.4</junit.version>

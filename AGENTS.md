@@ -98,14 +98,15 @@ ask the model the same question again, and pay for it.
 told to. `RackChatApiTest` pins this so the next person meets it as a fact rather than a
 mystery.
 
-**RackChat depends on modelrack4j `0.2.0-SNAPSHOT` from the local Maven repository
-(ADR-0014).** Nothing resolves it from Maven Central: it gets there by `mvn install` in the
-modelrack4j working copy on this machine, so a checkout without that build does not compile.
-Check the installed jar with `javap` before using a method — a snapshot's API is allowed to
-move, and the jar in `~/.m2` is the only statement of what this project can call today:
+**RackChat depends on modelrack4j `0.2.0`, which Maven Central does not have yet
+(ADR-0014).** It gets into the local repository by `mvn install` in the modelrack4j working
+copy, so a checkout without that build does not compile — which is why both CI jobs clone and
+install it before building anything. Check the installed jar with `javap` before using a
+method: the jar in `~/.m2` is the only statement of what this project can call today, and
+until Central has `0.2.0` the coordinate does not prove which build is sitting there.
 
 ```bash
-javap -cp ~/.m2/repository/io/github/maxtrezzi/modelrack4j-core/0.2.0-SNAPSHOT/modelrack4j-core-0.2.0-SNAPSHOT.jar \
+javap -cp ~/.m2/repository/io/github/maxtrezzi/modelrack4j-core/0.2.0/modelrack4j-core-0.2.0.jar \
   io.github.maxtrezzi.modelrack4j.LlmRegistry
 ```
 
@@ -231,6 +232,13 @@ There is still no `exec:java` or shaded jar — the script wraps
 starting from a fresh checkout; keep the two in step, and prefer sending a reader there rather
 than repeating its content.
 
+**CI is `.github/workflows/build.yml`**, on every push and pull request to `main`: `mvn
+verify` on JDK 21 and 25, and a third job that runs the same build with the provider
+credential variables set to the empty string. That last one is not decoration — it is what
+keeps the paragraph below a fact instead of a claim. Both legs clone modelrack4j and install
+it first; delete that step, and the matching paragraph in `docs/running-locally.md`, the day
+`0.2.0` reaches Maven Central.
+
 **The tests need no API key and no network**, because building a bundle never calls the
 provider: the fake key in `RackChatApiTest` only fails at the first request, which no test
 makes. That is a property of modelrack4j, not luck, and it is what keeps the suite offline.
@@ -247,5 +255,10 @@ keeps serving; from the page, the save is refused with the reason and the file i
 - **Verify against upstream sources, never from recollection.** If a library's behaviour
   matters to a decision, check its documentation or its source before writing the ADR that
   depends on it — do not describe an API from memory.
-- **The repository is private.** There is no public-audience register to maintain yet;
-  when and if that changes, say so here and adjust.
+- **The repository is public, under Apache-2.0 (ADR-0016).** Everything committed here is
+  read by strangers, and the whole history with it. Two things follow. **No link that only the
+  owner can open** goes into a commit message, an issue or a document — `Co-Authored-By` names
+  a role and stays; a session URL does not. **Nothing gets committed that is only true on this
+  machine**: a home path in an example, a screenshot of a personal directory, a step that works
+  because of something already installed here. `CONTRIBUTING.md` is what an outside reader is
+  pointed at, so a change to how the project is built or proposed belongs there too.

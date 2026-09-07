@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: JDK ${{ matrix.jdk }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 21 is the floor the backend is compiled for (ADR-0007); 25 is the current LTS, and
+        # the leg that would catch a Javalin or Jetty that stops running on a newer runtime.
+        # `maven.compiler.release` makes both legs compile the same bytecode, so what the
+        # second one proves is about running, not about compiling.
+        jdk: ['21', '25']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+          cache: maven
+
+      # modelrack4j 0.2.0 is not on Maven Central yet (ADR-0014), so the one dependency this
+      # build cannot resolve is installed from its own source first. Delete this step, and
+      # the paragraph in docs/running-locally.md that matches it, the day 0.2.0 is published.
+      - name: Install modelrack4j 0.2.0 from source
+        run: |
+          git clone --depth 1 https://github.com/maxtrezzi/modelrack4j "$RUNNER_TEMP/modelrack4j"
+          mvn -B --no-transfer-progress -f "$RUNNER_TEMP/modelrack4j/pom.xml" -DskipTests install
+
+      - name: Build
+        working-directory: backend
+        run: mvn -B --no-transfer-progress verify
+
+  offline:
+    name: no API keys in the environment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Install modelrack4j 0.2.0 from source
+        run: |
+          git clone --depth 1 https://github.com/maxtrezzi/modelrack4j "$RUNNER_TEMP/modelrack4j"
+          mvn -B --no-transfer-progress -f "$RUNNER_TEMP/modelrack4j/pom.xml" -DskipTests install
+
+      # The suite is claimed to need no key and no network, because building a bundle never
+      # calls the provider. This job is what turns that claim into something checked: a test
+      # that quietly grows a dependency on a credential fails here rather than for the first
+      # person who clones without one.
+      - name: Build with the provider credentials scrubbed
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: ''
+          ANTHROPIC_API_KEY: ''
+          GEMINI_API_KEY: ''
+          ZHIPU_API_KEY: ''
+        run: mvn -B --no-transfer-progress verify

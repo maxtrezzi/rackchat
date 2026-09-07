@@ -20,6 +20,9 @@ Also settled by the owner, on 2026-09-07: RackChat builds against the unreleased
 `0.2.0-SNAPSHOT` from the local Maven repository, with the cost that a checkout elsewhere does
 not build until modelrack4j is installed — reasoning in ADR-0014, work item M3.4.
 
+Also settled by the owner, on 2026-09-07: the repository is public, under Apache-2.0 — matching
+modelrack4j, which this is the first consumer of. Reasoning in ADR-0016, work item M4.
+
 Candidates raised but not yet decided, for when they become so:
 
 - TypeScript vs. plain JavaScript for the Hyperapp frontend. M1 shipped plain JavaScript
@@ -34,7 +37,8 @@ Candidates raised but not yet decided, for when they become so:
 - **Packaging.** Running it is still `dependency:build-classpath` plus a `java -cp` line,
   now behind `backend/run.sh` rather than typed out. A shaded jar or `exec:java` would end
   the classpath file itself; nobody has decided which, and the script lowered the pressure to.
-- **When to go back to a published modelrack4j.** M3.4 took `0.2.0-SNAPSHOT` from the local
-  repository (ADR-0014), which is one property in `backend/pom.xml` and a build that only
-  works on this machine. Moving to `0.2.0` on Maven Central is the same property, and the
-  question is only when it is published.
+- **Deleting the modelrack4j install step.** M4 moved the property from `0.2.0-SNAPSHOT` to
+  `0.2.0`, so nothing in the build changes when Maven Central gets it. What is still waiting on
+  the publication is the *prerequisite*: the paragraph in `docs/running-locally.md`, the same
+  one in `README.md` and `CONTRIBUTING.md`, and the clone-and-install step in both CI jobs. They
+  go together, and none of them is safe to remove before Central actually serves `0.2.0`.

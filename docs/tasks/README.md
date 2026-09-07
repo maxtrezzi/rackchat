@@ -53,3 +53,4 @@ Branch before starting, never commit to `main`, and name the branch after the it
 | [M3.4](milestones.md#m34--modelrack4j-020-snapshot) | modelrack4j `0.2.0-SNAPSHOT`, from the local repository | **Done** — ADR-0014; 27 tests green, an unconfigured start driven live |
 | [M3.5](milestones.md#m35--wire-modelrack4j-the-way-it-is-meant-to-be-wired) | Wire modelrack4j the way it is meant to be wired | **Done** — ADR-0015; 28 tests green, a store no longer keeps histories of what it removed |
 | [M3.6](milestones.md#m36--the-snapshot-moved-and-brought-a-method-with-it) | The snapshot moved, and brought a method with it | **Done** — 28 tests green on the new jar before any change; `writableSources()` taken up |
+| [M4](milestones.md#m4--a-public-repository) | A public repository | **Done** — ADR-0016; Apache-2.0, CI on 21 and 25 plus a credential-free leg, the session links rewritten out of the history |
