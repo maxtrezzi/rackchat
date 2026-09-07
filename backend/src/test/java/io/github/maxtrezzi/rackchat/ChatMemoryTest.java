@@ -59,6 +59,30 @@ class ChatMemoryTest {
             }
             """;
 
+    /** The same configuration with {@code remembers} taken out — written out, not patched. */
+    private static final String CONFIG_WITHOUT_REMEMBERS = """
+            llm {
+              forgets {
+                provider   = echo
+                api-key    = "unused"
+                model-name = "echo-1"
+              }
+              streamed {
+                provider   = echo
+                api-key    = "unused"
+                model-name = "echo-1"
+                streaming  = true
+                memory { type = message-window, max-messages = 10 }
+              }
+              shortMemory {
+                provider   = echo
+                api-key    = "unused"
+                model-name = "echo-1"
+                memory { type = message-window, max-messages = 2 }
+              }
+            }
+            """;
+
     @TempDir
     Path directory;
 
@@ -71,7 +95,7 @@ class ChatMemoryTest {
         Path config = Files.writeString(directory.resolve("memory.conf"), CONFIG);
         WritableConfigSource source = ConfigSource.ofWritableFile(config);
         registry = LlmRegistry.builder().sources(List.of(source)).watch(false).build();
-        app = RackChatApi.create(registry, source, new Conversations()).start(0);
+        app = RackChatApi.create(registry, new Conversations()).start(0);
     }
 
     @AfterEach
@@ -188,6 +212,25 @@ class ChatMemoryTest {
         assertTrue(!third.contains("user=one"), "the oldest turn should have been evicted: " + third);
     }
 
+    /**
+     * A connection removed by an edit can never be reached again, so its histories go — and a
+     * connection of that name added later starts empty rather than resuming a conversation
+     * from before it was deleted.
+     *
+     * <p>Through the editor this cannot come from the reload listener: modelrack4j answers a
+     * {@code store} with what changed instead of firing one, so the endpoint has to do it.
+     */
+    @Test
+    void aConnectionRemovedThroughTheEditorLosesItsHistory() throws Exception {
+        ask("remembers", "one", "c1");
+
+        assertEquals(200, save(CONFIG, CONFIG_WITHOUT_REMEMBERS).statusCode());
+        assertEquals(200, save(CONFIG_WITHOUT_REMEMBERS, CONFIG).statusCode());
+
+        assertTrue(ask("remembers", "two", "c1").contains("saw 1: user=two"),
+                "a name that was removed and added again must not resume its old history");
+    }
+
     @Test
     void aChatWithoutAConversationIsRefused() throws Exception {
         String body = sse("/api/chat?connection=remembers&message=hello").body();
@@ -204,6 +247,21 @@ class ChatMemoryTest {
         assertTrue(body.contains("\"name\":\"remembers\",\"description\":\"\",\"provider\":\"echo\""
                 + ",\"model\":\"echo-1\",\"streaming\":false,\"memory\":true"), body);
         assertTrue(body.contains("\"name\":\"forgets\"") && body.contains("\"memory\":false"), body);
+    }
+
+    /** Saves configuration text through the editor's endpoint. */
+    private HttpResponse<String> save(String expected, String text) throws Exception {
+        return send(HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + app.port() + "/api/config"))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(
+                        "{\"expected\":" + quote(expected) + ",\"text\":" + quote(text) + "}"))
+                .build());
+    }
+
+    /** Minimal JSON string escaping — enough for the configuration text this test sends. */
+    private static String quote(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
     }
 
     /** Sends one question and returns the text the fake model answered with. */

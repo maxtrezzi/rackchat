@@ -38,7 +38,7 @@ cd rackchat/backend
 mvn verify
 ```
 
-`verify` compiles and runs the 27 tests. They need no key and no network connection, so a
+`verify` compiles and runs the 28 tests. They need no key and no network connection, so a
 failure here is a real failure, not a missing credential.
 
 ## 2. Write your configuration

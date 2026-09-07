@@ -69,7 +69,8 @@ way it is.
 | [0008](0008-the-frontend-ships-inside-the-backend-jar.md) | The frontend ships inside the backend jar, as classpath static files | Accepted |
 | [0009](0009-stream-the-answer-over-server-sent-events.md) | Stream the answer over Server-Sent Events, framed as JSON | Accepted |
 | [0010](0010-edit-the-raw-hocon-in-a-textarea.md) | Edit the raw HOCON in a textarea, saved with an optimistic check | Accepted |
-| [0011](0011-a-writable-layer-with-a-notifier-supplied-by-hand.md) | A writable layer with the file notifier supplied by hand | Accepted |
+| [0011](0011-a-writable-layer-with-a-notifier-supplied-by-hand.md) | A writable layer with the file notifier supplied by hand | Accepted — amended by [0015](0015-let-the-registry-watch-its-layers-and-hand-back-the-writable-one.md) |
 | [0012](0012-memory-lives-on-the-server-one-per-conversation-and-connection.md) | Memory lives on the server, one per conversation and connection | Accepted — amended by [0013](0013-carry-the-conversation-across-a-connection-switch.md) |
 | [0013](0013-carry-the-conversation-across-a-connection-switch.md) | Carry the conversation across a connection switch by seeding the new memory | Accepted |
 | [0014](0014-build-against-the-local-modelrack4j-0-2-0-snapshot.md) | Build against the local modelrack4j `0.2.0-SNAPSHOT` | Accepted |
+| [0015](0015-let-the-registry-watch-its-layers-and-hand-back-the-writable-one.md) | Let the registry watch its layers, and hand back the one to write | Accepted |
