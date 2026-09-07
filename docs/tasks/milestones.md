@@ -185,29 +185,41 @@ variable and contains no stack frames. 22 tests, green.
 
 ## M3.3 — The conversation follows a connection switch
 
-**Status: Not started.**
+**Status: Done.**
 
-Decided in [ADR-0013](../adr/0013-carry-the-conversation-across-a-connection-switch.md),
-which amends ADR-0012: a conversation reaching a connection it has not used before starts
-with the history it already has, instead of starting empty.
+Implements [ADR-0013](../adr/0013-carry-the-conversation-across-a-connection-switch.md): a
+conversation reaching a connection it has not used before is handed the history it already
+has, instead of starting empty.
 
-What the work is:
+`Conversations` gained a second map — which connection each conversation last *completed an
+exchange* on — and seeds a memory at creation by replaying that source's messages through the
+new memory's own `add`. Following completed exchanges rather than requests is what keeps a
+failed call from becoming the source of a history it never received, which is also why
+`remember` moved out of `RackChatApi`: the write and the pointer that follows it belong under
+the same lock, and splitting them across two classes would have left the second easy to
+forget. `forget(removed)` now drops those pointers too, so a reload cannot leave one aimed at
+a connection that no longer exists.
 
-- `Conversations` remembers, per conversation, which memory the conversation last wrote to.
-- Creating a memory for a new (conversation, connection) pair replays that source's messages
-  into it, in order, through the new memory's own `add` — so the receiving connection's
-  window decides what survives the carry, and nothing arrives past it.
-- The page's note under the selector describes the connection's memory; a connection that
-  will be handed a history is a different statement from one that starts blank, and the
-  wording needs to say which.
+The page's note under the selector distinguishes the two states it now has: a connection that
+is already keeping this conversation says "remembers this conversation", one about to be
+handed it says where the history comes from — `remembers this conversation, starting from what
+cheap kept`. It follows completed answers as the server does, so a failed question does not
+move it.
 
-What to test, with `EchoProviderFactory` (its answers report the messages the model received,
-which is the only way to see what was carried):
+**26 tests, green.** Five are new, and one was replaced rather than added to:
+`switchingConnectionStartsThatConnectionsOwnHistory` asserted the behaviour ADR-0013 reverses,
+so it became `switchingConnectionCarriesTheConversation`. The rest pin what the ADR promises
+and what it does not: a `max-messages = 2` receiver is given only the last exchange of a
+longer carried history, a connection with no `memory` block is handed nothing, a turn on such
+a connection leaves nothing for the next one to carry, and switching back finds the first
+memory as it was left — with its own turn and no copy of what the other connection was told.
 
-- Ask one connection, switch, and the second connection's first answer reports the earlier
-  turns.
-- A receiving connection with `max-messages = 2` reports only what its window allows, not the
-  whole carried history — the carry goes through eviction rather than around it.
-- A connection with no `memory` block receives nothing and still accumulates nothing.
-- Switching back finds the first memory as it was left, with no second copy of the turns it
-  already held.
+**Verified live** against the echo provider, two connections in one conversation: `cheap`
+answered `saw 1: user=first`, `strong` answered `saw 3: user=first|ai|user=second` after the
+switch, `cheap` answered `saw 3: user=first|ai|user=third` on the way back — its own history,
+not the one `strong` had grown — and a second conversation on `strong` answered `saw 1:
+user=alone`. No key and no network.
+
+**What stays open:** the carry has only been seen on `message-window` memories. The cost the
+ADR accepts — one eviction pass at the switch — is only visible on a `token-window` memory
+over a provider with a remote estimator, which is another thing this machine cannot exercise.

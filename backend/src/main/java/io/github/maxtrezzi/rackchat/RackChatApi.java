@@ -138,7 +138,9 @@ public final class RackChatApi {
 
     /**
      * Answers one question, carrying the conversation's history when the connection has a
-     * {@code memory} block.
+     * {@code memory} block — including the first question asked of a connection the
+     * conversation has just switched to, whose memory {@link Conversations} seeds with what
+     * the conversation already has.
      *
      * <p>Streams the answer when the connection has a streaming model, and sends it in one
      * frame when it does not — {@code streaming = true} in the configuration is what decides
@@ -170,7 +172,7 @@ public final class RackChatApi {
 
                 @Override
                 public void onCompleteResponse(ChatResponse response) {
-                    remember(memory, question, response);
+                    conversations.remember(bundle, conversation, question, response.aiMessage());
                     finish(client, null);
                 }
 
@@ -186,21 +188,12 @@ public final class RackChatApi {
         try {
             ChatResponse response = bundle.chatModel().chat(messages);
             client.sendEvent("token", new Token(response.aiMessage().text()));
-            remember(memory, question, response);
+            conversations.remember(bundle, conversation, question, response.aiMessage());
             finish(client, null);
         } catch (RuntimeException e) {
             log.warn("Chat failed for '{}'", bundle.name(), e);
             finish(client, describe(e));
         }
-    }
-
-    private static void remember(Optional<ChatMemory> memory, UserMessage question, ChatResponse response) {
-        memory.ifPresent(remembered -> {
-            synchronized (remembered) {
-                remembered.add(question);
-                remembered.add(response.aiMessage());
-            }
-        });
     }
 
     private static void finish(io.javalin.http.sse.SseClient client, String error) {
