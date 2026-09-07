@@ -183,6 +183,51 @@ sentence twice. Tested against the real exception rather than a stand-in: the te
 registry over a config with an unset variable, and asserts the rendered text names the
 variable and contains no stack frames. 22 tests, green.
 
+## M3.2 — A launch script
+
+**Status: Done.**
+
+`backend/run.sh` compiles, regenerates the dependency classpath and starts `Main` with the
+arguments it was given. It is not packaging and does not pretend to be — there is still no
+shaded jar and no `exec:java`; it wraps the three lines that never vary so that only the
+configuration path and the environment are typed.
+
+The fake provider is the other half. `provider = echo` resolves only against
+`target/test-classes`, so the script reads the configuration it is about to start on and
+compiles the test sources when that configuration names it. Needing the fake is a property of
+the configuration, not of the run, and the script asks the same file RackChat will.
+
+A flag was the first shape of that — and a trap, because the configuration a bare `./run.sh`
+picks up by default is the echo one, so the two defaults contradicted each other and the
+plain command could only fail. `--echo` survives as a way to force the test sources on for a
+file that has no echo block yet but is about to be given one from the editor.
+
+**Found while building this: RackChat cannot start on an empty configuration file.**
+modelrack4j refuses a registry with no connections — `No 'llm' block found in any
+configuration layer`, and `The 'llm' block is empty: no configurations to build` for an
+`llm {}` with nothing under it. Both come from `SnapshotLoader`, which carries the same check
+in the `0.2.0-SNAPSHOT` working copy.
+
+That closes a route which looks obvious from the outside: start with nothing, then fill the
+configuration in from the editor. It cannot work, because the page holding the editor is only
+reachable once a configuration has loaded. Expressing "running, nothing configured yet" on
+top of `0.1.0` would mean holding an optional registry, a bootstrap watcher to build one when
+the file gains its first connection, and a second path through save for text that defines
+none — a component RackChat would carry until the library changed. Allowing an empty rack
+upstream removes all of it, and that is where the fix is going; the fake `echo` connection
+covers a first start meanwhile, being the only kind that needs no account.
+
+**Verified end to end** with `./run.sh` over an echo configuration: the log reports `knows 1
+connection(s): [echo]`, `/api/connections` answers with the `echo` view and no `api-key` field
+in it, and two questions in one conversation come back as `saw 1: user=first` then
+`saw 3: user=first|ai|user=second` — the second counting the question, its answer and the new
+question, so memory is live. No key and no network were involved.
+
+The other branch was checked too: over a configuration naming `provider = openai` with a
+literal fake key, the same command starts on `target/classes` alone, with no test classes in
+the running process's `-cp`. Building a bundle never calls the provider, which is why a key
+that cannot work still starts.
+
 ## M3.3 — The conversation follows a connection switch
 
 **Status: Done.**

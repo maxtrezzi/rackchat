@@ -31,8 +31,9 @@ Candidates raised but not yet decided, for when they become so:
 - **Authentication.** There is none, and the editor serves the configuration's raw text. The
   server binds `127.0.0.1` for that reason. Anything that makes RackChat reachable from
   another machine needs this settled first.
-- **Packaging.** Running it is still `dependency:build-classpath` plus a `java -cp` line. A
-  shaded jar or `exec:java` would end that; nobody has decided which.
+- **Packaging.** Running it is still `dependency:build-classpath` plus a `java -cp` line,
+  now behind `backend/run.sh` rather than typed out. A shaded jar or `exec:java` would end
+  the classpath file itself; nobody has decided which, and the script lowered the pressure to.
 - **When to go back to a published modelrack4j.** M3.4 took `0.2.0-SNAPSHOT` from the local
   repository (ADR-0014), which is one property in `backend/pom.xml` and a build that only
   works on this machine. Moving to `0.2.0` on Maven Central is the same property, and the

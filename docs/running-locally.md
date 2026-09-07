@@ -82,9 +82,19 @@ Three things about that block are worth knowing before you edit it:
 
 ## 3. Run it
 
-The build produces `target/rackchat-backend-0.1.0-SNAPSHOT.jar`, but that jar holds only
-RackChat's own classes — there is no packaging step yet that bundles the dependencies. So the
-run goes through a classpath file that Maven writes for you:
+```bash
+OPENAI_API_KEY=sk-your-real-key ./run.sh rackchat.conf
+```
+
+`run.sh` compiles, then starts RackChat. Everything after the script name is passed to
+RackChat itself, so the configuration path is given exactly as below; the environment it
+reads — your key variables, `RACKCHAT_PORT`, `RACKCHAT_HOST` — is the environment you start
+it in.
+
+The script exists because the build produces `target/rackchat-backend-0.1.0-SNAPSHOT.jar`
+holding only RackChat's own classes: there is no packaging step yet that bundles the
+dependencies, so the run needs a classpath file that Maven writes. That is what the script
+does, and it is still worth knowing by hand:
 
 ```bash
 mvn -q dependency:build-classpath -Dmdep.outputFile=target/cp.txt
@@ -94,7 +104,8 @@ OPENAI_API_KEY=sk-your-real-key \
   io.github.maxtrezzi.rackchat.Main rackchat.conf
 ```
 
-You only need the first command again after changing the dependencies in `pom.xml`.
+Run by hand, the first command is needed again only after the dependencies in `pom.xml`
+change; the script regenerates the file every time, which costs a second and is never wrong.
 
 You should see:
 
@@ -154,7 +165,6 @@ visible, which is otherwise invisible from outside.
 
 ```bash
 cd rackchat/backend
-mvn -q test-compile
 
 cat > rackchat.conf <<'EOF'
 llm {
@@ -168,12 +178,22 @@ llm {
 }
 EOF
 
-mvn -q dependency:build-classpath -Dmdep.outputFile=target/cp.txt
-java -cp "target/classes:target/test-classes:$(cat target/cp.txt)" \
-  io.github.maxtrezzi.rackchat.Main rackchat.conf
+./run.sh rackchat.conf
 ```
 
-`target/test-classes` on the classpath is what makes `provider = echo` resolvable.
+No flag is needed: the script reads the configuration it is about to start on, sees
+`provider = echo` in it, and compiles the test sources so that `target/test-classes` — the
+only place the fake provider exists — is on the classpath. Started without them, that
+configuration is rejected with *llm.echo.provider is 'echo', for which no provider module is
+on the classpath*.
+
+Passing `--echo` forces the test sources on regardless, which is what you want when the file
+has no echo block yet and you mean to add one from the editor while it runs.
+
+An empty configuration file works too: RackChat starts with no connections, the page says
+so, and the editor is reachable to add one — modelrack4j 0.2.0 accepts a registry with nothing
+in it (ADR-0014). The echo connection above is still the cheapest way to give a first start
+something to load without an account, not the only way to start at all.
 
 Ask two questions in the page and you will see the memory working:
 
@@ -203,7 +223,8 @@ usual one is an unset variable:
 
 Set that variable in the shell you start RackChat from, or change the connection to a provider
 whose key you do have. The same message shape covers any other rejected configuration — an
-unknown `provider`, a `memory` block a provider cannot support — with a different reason.
+unknown `provider`, a `memory` block a provider cannot support, a file that defines no
+connection at all — with a different reason.
 
 **"RackChat cannot start: Port already in use…"** — something else has the port, quite
 possibly an earlier RackChat you did not stop. Javalin logs its own `Failed to start Javalin`
