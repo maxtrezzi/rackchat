@@ -63,10 +63,20 @@ the file — so text that would not load is refused instead of being saved and b
 start. A test asserts the file is byte-identical after a rejected save. Never replace this
 with "write the file, then reload".
 
-**The registry is wired by hand for a reason (ADR-0011).** `sources(writable)` plus an
-explicit `FileChangeNotifier`, not `configFiles(...)` with `watch(true)` — because
-modelrack4j `0.1.0` refuses `watch(true)` on a registry built from `sources(...)`, and
-`store()` needs a source from there. The tidier-looking version silently removes the editor.
+**A save has three refusals and three answers.** `409` for a layer that moved under the
+editor, `400` for text that would not load, `500` for a file that could not be written.
+`ConfigValidationException` and `ConfigAccessException` are separate types in modelrack4j
+`0.2.0` and neither is the other's subclass (ADR-0014), which is what makes the last two
+distinguishable — telling someone to fix their text when the directory is read-only sends them
+to look in the wrong place.
+
+**The registry is wired by hand (ADR-0011).** `sources(writable)` plus an explicit
+`FileChangeNotifier`, not `configFiles(...)` with `watch(true)` — because `store()` needs a
+source from `sources(...)`, and modelrack4j `0.1.0` refused `watch(true)` on a registry built
+that way. **`0.2.0` accepts it** (its ADR-0050), so the hand-wiring is now a choice rather
+than the only route; it stays until someone decides otherwise, because collapsing a mechanism
+that works and is tested is a decision, not a tidy-up. What has not changed: a registry built
+with `configFiles(...)` alone has no writable source, and that silently removes the editor.
 
 **SSE frames carry JSON, not bare text (ADR-0009).** SSE is line-based and strips one space
 after `data:`, so a raw token silently loses leading whitespace and every newline. `token`
@@ -81,11 +91,35 @@ ask the model the same question again, and pay for it.
 told to. `RackChatApiTest` pins this so the next person meets it as a fact rather than a
 mystery.
 
-**RackChat depends on modelrack4j `0.1.0` from Maven Central, not on the copy of that
-repository sitting on this machine.** That working copy is `0.2.0-SNAPSHOT` and already has
-API `0.1.0` does not (`LlmRegistry.sources()`, `ConfigAccessException`). Check the published
-jar with `javap` before using a method — reading modelrack4j's own source will tell you about
-methods this project cannot call.
+**RackChat depends on modelrack4j `0.2.0-SNAPSHOT` from the local Maven repository
+(ADR-0014).** Nothing resolves it from Maven Central: it gets there by `mvn install` in the
+modelrack4j working copy on this machine, so a checkout without that build does not compile.
+Check the installed jar with `javap` before using a method — a snapshot's API is allowed to
+move, and the jar in `~/.m2` is the only statement of what this project can call today:
+
+```bash
+javap -cp ~/.m2/repository/io/github/maxtrezzi/modelrack4j-core/0.2.0-SNAPSHOT/modelrack4j-core-0.2.0-SNAPSHOT.jar \
+  io.github.maxtrezzi.modelrack4j.LlmRegistry
+```
+
+**Its types carry a parameter.** `LlmRegistry`, `LlmBundle` and `LlmSnapshot` are generic in
+whatever a `CustomPropertiesHandler` produces. RackChat registers none: it builds an
+`LlmRegistry<Void>` and takes `<?>` wherever the type is irrelevant, which is everywhere else.
+Never write them raw — a raw type erases every generic member of the class, including the
+`Optional<ReloadChange>` a `store` returns.
+
+**A registry may hold nothing, so RackChat starts unconfigured.** `0.2.0` accepts a
+configuration that defines no connection — an empty file, comments only, or `llm {}` — and
+builds a registry whose `names()` is empty (its ADR-0057). RackChat starts on it, serves an
+empty `/api/connections`, says so in the page, and its editor is reachable: starting from
+nothing and filling the file in from the page works. `get(...)` on a name no layer defines
+throws `UnknownConfigurationException`, which is why the chat endpoint asks
+`snapshot.contains(name)` first.
+
+**An unknown key is now an error** (its ADR-0056). A misspelling that `0.1.0` ignored in
+silence — `temperatur`, `max-mesages` inside `memory` — is refused at load, naming the key,
+the layer and the line. A configuration that worked before can stop working, and that is the
+version bump, not a defect.
 
 **One `snapshot()` per unit of work, never a cached bundle.** `get()` reads the live snapshot
 each call, so two calls can straddle a reload and disagree. The endpoints take one snapshot
@@ -164,7 +198,7 @@ a vendored Hyperapp (ADR-0008).
 
 ```bash
 cd backend && mvn compile                      # compile
-cd backend && mvn test                         # 26 tests, no keys and no network needed
+cd backend && mvn test                         # 27 tests, no keys and no network needed
 cd backend && mvn test -Dtest=RackChatApiTest  # one class
 ```
 

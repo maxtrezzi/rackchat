@@ -62,7 +62,7 @@ class ChatMemoryTest {
     @TempDir
     Path directory;
 
-    private LlmRegistry registry;
+    private LlmRegistry<Void> registry;
     private Javalin app;
     private final HttpClient client = HttpClient.newHttpClient();
 

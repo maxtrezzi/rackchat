@@ -6,6 +6,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import io.github.maxtrezzi.modelrack4j.ConfigAccessException;
 import io.github.maxtrezzi.modelrack4j.ConfigValidationException;
 import io.github.maxtrezzi.modelrack4j.LlmBundle;
 import io.github.maxtrezzi.modelrack4j.LlmRegistry;
@@ -59,7 +60,7 @@ public final class RackChatApi {
     public record ConfigRejected(String message) {
     }
 
-    public static Javalin create(LlmRegistry registry, WritableConfigSource configSource, Conversations conversations) {
+    public static Javalin create(LlmRegistry<?> registry, WritableConfigSource configSource, Conversations conversations) {
         return Javalin.create(config -> {
             config.concurrency.useVirtualThreads = true;
             config.staticFiles.add("/public", Location.CLASSPATH);
@@ -83,7 +84,7 @@ public final class RackChatApi {
                     return;
                 }
 
-                LlmSnapshot snapshot = registry.snapshot();
+                LlmSnapshot<?> snapshot = registry.snapshot();
                 if (!snapshot.contains(name)) {
                     finish(client, "no connection named '" + name + "'");
                     return;
@@ -105,8 +106,13 @@ public final class RackChatApi {
      * <p>The stale check is what makes the editor safe against the file changing underneath
      * it: the page sends back the text it loaded, and a mismatch is a conflict rather than a
      * silent overwrite.
+     *
+     * <p>Three refusals, three answers: {@code 409} for a layer that moved, {@code 400} for
+     * text that would not load, and {@code 500} for a file that could not be written. The
+     * last two are different exceptions in modelrack4j 0.2.0 and are not each other's
+     * subclass, so neither catch can swallow the other.
      */
-    private static void save(io.javalin.http.Context ctx, LlmRegistry registry, WritableConfigSource source) {
+    private static void save(io.javalin.http.Context ctx, LlmRegistry<?> registry, WritableConfigSource source) {
         ConfigEdit edit = ctx.bodyAsClass(ConfigEdit.class);
         if (edit == null || edit.text() == null || edit.expected() == null) {
             ctx.status(400).json(new ConfigRejected("expected and text are both required"));
@@ -121,15 +127,19 @@ public final class RackChatApi {
             ctx.status(409).json(new ConfigConflict(
                     "The file changed since you loaded it, so nothing was saved.", e.current()));
         } catch (ConfigValidationException e) {
-            // modelrack4j 0.1.0 has one exception for both "this text is wrong" and "the file
-            // could not be written" — its ADR-0053 splits them, but only after this version.
-            // So a genuine write failure will also arrive here and be reported as a rejection.
             ctx.status(400).json(new ConfigRejected(e.getMessage()));
+        } catch (ConfigAccessException e) {
+            // The text was fine and the machine was not: an unwritable directory, a full disk.
+            // modelrack4j 0.2.0 gives this its own type (its ADR-0053), which is what lets the
+            // two be told apart here — 400 says "fix your text", and this one must not, since
+            // there is nothing in the editor to fix.
+            log.warn("Configuration could not be written", e);
+            ctx.status(500).json(new ConfigRejected(e.getMessage()));
         }
     }
 
-    private static List<ConnectionView> connections(LlmRegistry registry) {
-        LlmSnapshot snapshot = registry.snapshot();
+    private static List<ConnectionView> connections(LlmRegistry<?> registry) {
+        LlmSnapshot<?> snapshot = registry.snapshot();
         return snapshot.names().stream()
                 .sorted()
                 .map(name -> ConnectionView.of(snapshot.get(name)))
@@ -150,7 +160,7 @@ public final class RackChatApi {
      * model alongside the history but is written to memory only once an answer comes back, so
      * a failed call leaves no dangling question for the next turn to carry.
      */
-    private static void answer(io.javalin.http.sse.SseClient client, LlmBundle bundle,
+    private static void answer(io.javalin.http.sse.SseClient client, LlmBundle<?> bundle,
                                String message, String conversation, Conversations conversations) {
         Optional<ChatMemory> memory = conversations.memoryFor(bundle, conversation);
         UserMessage question = UserMessage.from(message);

@@ -17,7 +17,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <javalin.version>7.2.3</javalin.version>
-    <modelrack4j.version>0.1.0</modelrack4j.version>
+    <modelrack4j.version>0.2.0-SNAPSHOT</modelrack4j.version>
     <jackson.version>2.22.1</jackson.version>
     <slf4j.version>2.0.17</slf4j.version>
     <junit.version>5.14.4</junit.version>
