@@ -27,6 +27,12 @@ Candidates raised but not yet decided, for when they become so:
 
 - TypeScript vs. plain JavaScript for the Hyperapp frontend. M1 shipped plain JavaScript
   with no build step; this only reopens if the page grows enough to want types.
+- **How much design the page wants.** `styles.css` is 161 lines that follow the system's
+  light or dark setting and stop there: nothing about the typography or the spacing was
+  decided, and the configuration editor is a bare `textarea`. The README says so plainly. What
+  is undecided is not whether to improve it but what it may cost — a CSS framework or a
+  highlighting editor would end ADR-0008's no-build-step frontend, which is a decision of its
+  own rather than a detail of a restyle.
 - **Whether history should survive a restart.** M3 settled where memory lives (the server,
   one per conversation and connection — ADR-0012) but it is held in memory only, so
   restarting loses every conversation while the page still shows the transcript. Persisting

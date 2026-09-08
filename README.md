@@ -26,8 +26,35 @@ llm {
     streaming   = true
     memory { type = message-window, max-messages = 20 }
   }
+  careful {
+    description = "one answer, no streaming, forty turns of memory"
+    provider    = anthropic
+    api-key     = ${ANTHROPIC_API_KEY}
+    model-name  = "claude-sonnet-5"
+    memory { type = message-window, max-messages = 40 }
+  }
 }
 ```
+
+## Change the model in the middle of a conversation
+
+Pick a different connection from the selector and keep typing — **the conversation goes with
+you**. Ask `fast` a few questions, hit something hard, switch to `careful`, and it already
+knows what was said. Different provider, different model, same conversation; there is no
+"start again over there".
+
+That is most of the point of having a rack of models rather than one. The cheap connection
+takes the ordinary turns, and the expensive one is a click away for the turn that needs it,
+without you re-explaining the problem to it first.
+
+**It is done by replaying, not by copying.** The first time a conversation reaches a
+connection, its memory is seeded with the history of the connection you were last talking to —
+message by message, through the receiving connection's own `memory` block. So a connection with
+`max-messages = 4` is given the last four, not a transcript its own window would have excluded,
+and one with no `memory` block is given nothing and says so. The seeding happens once, when
+that memory is created; from there the two connections keep their own histories and drift
+apart. [ADR-0013](docs/adr/0013-carry-the-conversation-across-a-connection-switch.md) has the
+reasoning, including the two designs this was chosen over.
 
 ![The chat tab: a two-turn conversation, with the connection selector in the header](docs/images/chat.png)
 
@@ -41,6 +68,18 @@ first: text that would not load is refused with the reason, and the file on disk
 untouched.
 
 ![The configuration tab: the HOCON file in a textarea, with Reload and Save](docs/images/configuration.png)
+
+**The look is the part that has had the least attention, and it shows.** What is there is
+deliberate as far as it goes — it follows your system's light or dark setting, and the
+transcript stays readable — but nothing beyond that has been designed: no considered
+typography, no spacing anyone thought hard about, and a configuration editor that is a plain
+`textarea` with no highlighting of the HOCON in it. Everything so far has gone into what
+happens behind the page.
+
+It is 161 lines of plain CSS with no framework and no build step, so it is unusually easy to
+take somewhere better. If you do, that is a welcome pull request — read
+[ADR-0008](docs/adr/0008-the-frontend-ships-inside-the-backend-jar.md) first, since "no build
+step" is a decision rather than an omission.
 
 ## Running it
 
