@@ -13,6 +13,13 @@ unpleasant to decline.
 
 That is the only real rule here.
 
+**One exception, where the answer is already yes: the look of the page.** `styles.css` is 161
+lines of plain CSS that nobody has designed, and improving it needs no discussion first — as
+long as it stays a stylesheet the browser loads directly. A CSS framework or a highlighting
+editor for the configuration tab would end the no-build-step frontend
+([ADR-0008](docs/adr/0008-the-frontend-ships-inside-the-backend-jar.md)), and that one is worth
+an issue before you write it.
+
 ## The most useful bug report
 
 **No part of this project has ever exchanged a message with a real model.** It was built on a
